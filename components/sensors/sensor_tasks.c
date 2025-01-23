@@ -1,10 +1,12 @@
-#include "driver/i2c.h"
+#include "driver/i2c_master.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_err.h"
 #include "sensor_tasks.h"
-#include "pin_config.h"
+#include "i2c_config.h"
 #include "esp_check.h"
 #include "co2_sensor.h"
 #include "voc_sensor.h"
@@ -12,7 +14,7 @@
 #define TEMP_SENS_ADDR     0x44
 #define TEMP_MEASURE_CMD   0xFD
 
-#define CO2_SENS_ADDR_A    0x29
+#define CO2_SENS_ADDR_A    0x62     //0x29
 #define CO2_SENS_ADDR_B    0x2A
 
 #define VOC_SENS_ADDR      0x59
@@ -21,13 +23,17 @@
 #define CRC8_POLYNOMIAL    0x31
 #define CRC8_LEN           1
 
+QueueHandle_t co2_data_queue = NULL;
+SemaphoreHandle_t co2_mutex = NULL;
+
+/* CRC check for PCB CO2 sensor, not currently used with bredboard sensor
 esp_err_t crc_check(const uint8_t* data, uint16_t count, uint8_t checksum)
 {
     uint16_t current_byte;
     uint8_t crc = CRC8_INIT;
     uint8_t crc_bit;
 
-    /* calculates 8-Bit checksum with given polynomial */
+    // calculates 8-Bit checksum with given polynomial
     for (current_byte = 0; current_byte < count; ++current_byte) 
     {
         crc ^= (data[current_byte]);
@@ -51,6 +57,8 @@ esp_err_t crc_check(const uint8_t* data, uint16_t count, uint8_t checksum)
     }
 }
 
+*/
+#ifdef TEMP_SENSOR_CONNECTED
 void temp_humidity_task(void *parameter)
 {
     while(1)
@@ -76,32 +84,6 @@ void temp_humidity_task(void *parameter)
             ESP_LOGE("TEMP", "Could not read from temp sensor");
             continue;
         }
-
-        /** 
-        //start I2C communication
-        ESP_ERROR_CHECK(i2c_master_start(cmd));
-
-        //tell the sensor that we want to read data from it by writing its address and command
-        ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (TEMP_SENS_ADDR << 1) | I2C_MASTER_WRITE, I2C_MASTER_ACK));
-        ESP_ERROR_CHECK(i2c_master_write_byte(cmd, TEMP_MEASURE_CMD, I2C_MASTER_ACK));
-        ESP_ERROR_CHECK(i2c_master_stop(cmd));
-
-        //let the processor do other things while we wait for the sensor to finish its measuremetn ~ 10ms
-        ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_PORT, cmd, pdMS_TO_TICKS(I2C_TIMEOUT)));
-        ESP_ERROR_CHECK(i2c_cmd_link_delete(cmd));
-        vTaskDelay(10000);
-
-        //setup the cmd for communication again so we can read the measured value
-        cmd = i2c_cmd_link_create();
-        ESP_ERROR_CHECK(i2c_master_start(cmd));
-        ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (TEMP_SENS_ADDR << 1) | I2C_MASTER_READ, I2C_MASTER_ACK));
-        ESP_ERROR_CHECK(i2c_master_read(cmd, data, sizeof(data) - 1, I2C_MATER_ACK));
-        ESP_ERROR_CHECK(i2c_master_read_byte(cmd, data[5]), I2C_MASTER_NACK);
-        ESP_ERROR_CHECK(i2c_master_stop(cmd));
-        ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_PORT, cmd, pdMS_TO_TICKS(I2C_TIMEOUT)));
-        ESP_ERROR_CHECK(i2c_cmd_link_delete(cmd));
-
-        */
         //check temperature CRC
         err = crc_check(&data[0], 2, data[2]);
         if(err != ESP_OK)
@@ -134,7 +116,9 @@ void temp_humidity_task(void *parameter)
     }
 }
 
+#endif
 
+#ifdef VOC_SENSOR_CONNECTED
 void voc_task(void *parameter)
 {
     while(1)
@@ -203,70 +187,61 @@ void voc_task(void *parameter)
         //convert data to readable format
     }
 }
-
+#endif
 
 /**
  * 
- * @brief task to write command to co2 sensor to initialize a reading. Then, give sensor enough time
- *        to measure and then get the measured value and convert to readable format before adding to queue
+ * @brief This task handles communication between the MCU and the CO2 sensor.
+ *        It also handles all logic that needs to be performed on the data read
  */
 void co2_task(void *parameter)
 {
-    while(1)
+    // 32 start CO2 sensor command split byte by byte so that it can be used in the transmit function
+    uint8_t co2_start_cmd[2] =    {0x21, 0xb1};                          //{0x36, 0x15, 0x00, 0x11};  //the two commands split into byte by byte  
+    
+    // create co2 queue and mutex for data transfer with web UI task
+    co2_data_queue = xQueueCreate(10, sizeof(uint16_t));
+    co2_mutex = xSemaphoreCreateMutex();
+    if(co2_data_queue == NULL)
+    {
+        ESP_LOGE("CO2", "Error creating co2 data queue");
+    }
+    if(co2_mutex == NULL)
+    {
+        ESP_LOGE("CO2", "Error creating co2 mutex");
+    }
+
+    // give time for I2C to initialize before trying to read from sensor on startup
+    vTaskDelay(pdMS_TO_TICKS(30));
+
+    while(1) // continuous task loop
     {
         esp_err_t err = ESP_FAIL;
-
-        uint8_t co2_cmd[4] = {0x36, 0x15, 0x00, 0x11};  //the two commands split into bit by bit
-        uint8_t read_cmd[2] = {0x16, 0x39};
-        uint8_t sensor_address = 0x00;
-
         uint16_t sensor_a_raw_concentration = 0;
         uint16_t sensor_b_raw_concentration = 0;
         float co2_measurement_a = 0;
         float co2_measurement_b = 0;
 
-        for(uint8_t j = 0; j < 2; j++)  //j = 0 will write the measurement command to both sensors. j = 1 will read measurements from sensors
+        for(uint8_t j = 0; j < 2; j++)  // j = 0 will write the command to sensor to begin measurement. j = 1 will read measurement data from sensors
         {
-            for(uint8_t i = 0; i < 2; i++)  //i = 1 will handle sensor A, i = 2 will handle sensor B
+            if(j == 0)  // send command to first sensor to take measurement
             {
-                switch (i)  //interact with sensor A when i == 0 and sensor B when i == 1
+                err = i2c_master_transmit(i2c_co2_device_handle, co2_start_cmd, sizeof(co2_start_cmd), pdMS_TO_TICKS(100));
+                if(err != ESP_OK)
                 {
-                    case 0:
-                        sensor_address = CO2_SENS_ADDR_A;
-                        break;
-                    case 1: 
-                        sensor_address = CO2_SENS_ADDR_B;
-                        break;
-                    default:
-                        break;
+                    ESP_LOGE("CO2 TRANSMIT", "Error writing measure command to sensor with error: 0x%03x", err);
                 }
 
-                if(j == 0)
-                {
-                    err = i2c_master_write_to_device(I2C_PORT, sensor_address, co2_cmd, sizeof(co2_cmd), I2C_TIMEOUT);
-                    if(err != ESP_OK)
-                    {
-                        ESP_LOGE("CO2", "Failed to write command to sensor");
-                    }
-                }    
-                else if(j == 1 && i == 0)  //read measurement from sensor A
-                {
-                    if(co2_read_data(sensor_address, &sensor_a_raw_concentration) == ESP_OK)
-                    {
-                        co2_measurement_a = ((sensor_a_raw_concentration - 16384.0) / 32768.0) * 100;
-                    }
-                }
-                else if(j == 1 && i ==1) // read measurement from sensor B
-                {
-                    if(co2_read_data(sensor_address, &sensor_b_raw_concentration) == ESP_OK)
-                    {
-                        co2_measurement_b = ((sensor_b_raw_concentration - 16384.0) / 32768.0) * 100;
-                    }
-                }
-            }
-            if(j == 0)//give sensors enough time to complete measurement if first iteration
+                // after both sensors receive initial command, give time to take measurement
+                vTaskDelay(pdMS_TO_TICKS(5000));
+            }    
+            else if(j == 1)  // read measurement from sensor A
             {
-                vTaskDelay(pdMS_TO_TICKS(110));
+                if(co2_read_data(&sensor_a_raw_concentration) == ESP_OK)
+                {
+                    ESP_LOGI("CO2 Reading", "PPM: %d", sensor_a_raw_concentration);
+                    //co2_measurement_a = ((sensor_a_raw_concentration - 16384.0) / 32768.0) * 100;
+                }
             }
 
             if(j == 1) // make sure both sensor measured similar values, average out, and add to queue
@@ -275,18 +250,20 @@ void co2_task(void *parameter)
                 {
                     float avg_co2 = (co2_measurement_a + co2_measurement_b) / 2;
                     //err = xQueueSend(co2_readings_queue, avg_co2, pdMS_TO_TICKS(10));
-                    if(err != ESP_OK)
-                    {
-                        ESP_LOGW("CO2", "Failed to add data to queue");
-                    }
+                    //if(err != ESP_OK)
+                    //{
+                    //  ESP_LOGW("CO2", "Failed to add data to queue");
+                   // }
                 }
                 else  //somehow figure out which one was accurate and which one to use
                 {
 
                 }
+
+                //convert_co2_data_to_readable(&sensor_a_raw_concentration);
             }
         }
-
+        vTaskDelay(pdMS_TO_TICKS(500));
         //convert data to readable format
     }
 }

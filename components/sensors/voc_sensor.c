@@ -1,7 +1,7 @@
 #include "stdint.h"
 #include "esp_err.h"
 #include "esp_log.h"
-#include "pin_config.h"
+#include "i2c_config.h"
 #include "sensor_tasks.h"
 #include "driver/i2c.h"
 
