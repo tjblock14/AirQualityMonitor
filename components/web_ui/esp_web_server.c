@@ -1,12 +1,18 @@
 #include "esp_web_server.h"
 #include "esp_log.h"
 #include "esp_http_server.h"
+#include "get_sensor_data.h"
 
 static const char *TAG = "web_server";
 
 // Web server GET handler
-esp_err_t get_server_handler(httpd_req_t *req) {
-    const char resp[] = "<html><body><h1>Air Quality Monitor</h1><p>Temperature: 22.5C</p><p>Humidity: 55%%</p></body></html>";
+esp_err_t get_server_handler(httpd_req_t *req) 
+{
+    char resp[512];
+    uint16_t co2_level = get_avg_co2_value();
+
+    snprintf(resp, sizeof(resp), "<html><body><h1>Air Quality Monitor</h1><p>CO2 Level: %d PPM</p></body></html>", co2_level);
+
     httpd_resp_send(req, resp, strlen(resp));
     return ESP_OK;
 }

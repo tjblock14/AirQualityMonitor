@@ -4,12 +4,14 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 
 #define I2C_TIMEOUT        10
 #define VOC_MUX_ADDR       0x70
 
 //queue handles that the azure hub and display will read from
-extern QueueHandle_t temp_readings_queue, humid_readings_queue, voc_readings_queue, co2_readings_queue;
+extern QueueHandle_t temp_data_queue, humid_data_queue, voc_data_queue, co2_data_queue;
+extern SemaphoreHandle_t co2_mutex;
 
 void temp_humidity_task(void *parameter);
 void voc_task(void *parameter);

@@ -3,4 +3,6 @@ idf_component_register(SRCS "main.c"
                     REQUIRES 
                         gpio_setup
                         sensors
-                        web_ui)
+                        web_ui
+                        aws_setup
+                        certifications)
