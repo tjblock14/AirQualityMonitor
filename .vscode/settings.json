@@ -36,6 +36,8 @@
         "i2c_master.h": "c",
         "sensor_tasks.h": "c",
         "esp_http_server.h": "c",
-        "ledc.h": "c"
+        "ledc.h": "c",
+        "general_sensors.h": "c",
+        "userbuttons.h": "c"
     },
 }
