@@ -87,6 +87,16 @@
      {
          ESP_LOGE(TAG, "Error adding display device to I2C bus");
      }
+
+     err = i2c_master_bus_add_device(i2c_bus_handle, &i2c_temp_device, &i2c_temp_device_handle);
+     if(err == ESP_OK)
+     {
+         ESP_LOGI(TAG, "Temp Device added to I2C bus");
+     }
+     else
+     {
+         ESP_LOGE(TAG, "Error adding temp device to I2C bus");
+     }
  
      // Configure the LEDC timer for the PWM signal
      ledc_timer_config_t ledc_timer = {

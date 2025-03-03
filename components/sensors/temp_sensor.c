@@ -10,7 +10,8 @@
 #include "freertos/queue.h"
 
 #define TEMP_SENS_ADDR     0x44
-#define TEMP_MEASURE_CMD   0xFD
+
+static const char *TAG = "TEMP/HUMID";
 
 /*************************
  * @brief this function takes the raw data from the sensor and converts it into a readable format
@@ -39,24 +40,40 @@ void calculate_readable_temp_humid(uint8_t data[6], float *temperature, float *h
 // going to want a mutex between temp sensor and voc sensor so voc can take humidity sensitive measurements
 void temp_humidity_task(void *parameter)
 {
+    uint8_t temp_humid_measure_cmd = {0xFD};
+
     while(1)
     {
+        esp_err_t err = ESP_FAIL;
         uint8_t sensor_data[6] = {0};
         float temperature = 0;
         float humidity = 0;
 
-        i2c_master_transmit_receive(i2c_temp_device_handle, TEMP_MEASURE_CMD, sizeof(TEMP_MEASURE_CMD), sensor_data, sizeof(sensor_data), pdMS_TO_TICKS(10));
+        err = i2c_master_transmit(i2c_temp_device_handle, &temp_humid_measure_cmd, sizeof(temp_humid_measure_cmd), pdMS_TO_TICKS(100));
+        if(err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error with temp sensor write cmd: 0x%03X", err);
+        }
         
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        err = i2c_master_receive(i2c_temp_device_handle, sensor_data, sizeof(sensor_data), pdMS_TO_TICKS(100));
+        if(err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error with temp sensor read cmd");
+        }
+
+
         // Ensure CRC is successful for both the temeprature and humidity data before proceeding
         if((crc_check(sensor_data, 2) == sensor_data[2]) && (crc_check(&sensor_data[3], 2) == sensor_data[5]))
         {
             calculate_readable_temp_humid(sensor_data, &temperature, &humidity);
+            ESP_LOGW(TAG, "Measured Temperatue: %f\n Measured Humidity: %f", temperature, humidity);
         }
         else
         {
             continue;
         }
-
-        ESP_LOGI("TEMP/HUMID", "Measured Temperatue: %f\n Measured Humidity: %f", temperature, humidity);
     }
+
+    vTaskDelay(pdMS_TO_TICKS(4000));
 }
