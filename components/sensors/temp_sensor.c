@@ -73,7 +73,7 @@ void temp_humidity_task(void *parameter)
         {
             continue;
         }
-    }
 
-    vTaskDelay(pdMS_TO_TICKS(4000));
+        vTaskDelay(pdMS_TO_TICKS(4000));
+    }
 }
