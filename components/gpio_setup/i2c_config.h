@@ -11,8 +11,11 @@
 
 void i2c_master_config(void);
 
-extern i2c_master_bus_handle_t i2c_bus_handle;
 extern i2c_master_dev_handle_t i2c_co2_device_handle;
-extern i2c_device_config_t i2c_co2_device;
+extern i2c_device_config_t     i2c_co2_device;
+extern i2c_master_dev_handle_t i2c_temp_device_handle;
+extern i2c_device_config_t     i2c_temp_device;
+extern i2c_master_dev_handle_t i2c_display_device_handle;
+extern i2c_device_config_t     i2c_display_device;
 
 #endif

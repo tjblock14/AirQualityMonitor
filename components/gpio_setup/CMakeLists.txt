@@ -1,5 +1,8 @@
-set(srcs)
+set(srcs 
+        "UserButtons.c" 
+        "i2c_config.c" )
 
-idf_component_register(SRCS "i2c_config.c" "${srcs}" INCLUDE_DIRS "."
+idf_component_register(SRCS "${srcs}" INCLUDE_DIRS "."
                         REQUIRES 
-                            driver)
+                            driver
+                            esp_timer)
