@@ -90,6 +90,5 @@ void display_task(void *parameter)
 
         // Depending on the current screen and if not in sleep mode, update screen with newest data
 
-        vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }

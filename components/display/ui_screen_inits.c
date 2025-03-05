@@ -14,8 +14,6 @@ char display_text_buf_line2[16];
 char display_text_buf_line3[16];
 char display_text_buf_line4[16];
 
-esp_err_t err = ESP_FAIL;
-
 /***************
  * @brief Re-initalize all of the text lines to zero
  */
@@ -51,6 +49,11 @@ void temp_humid_screen_init()
 
 void co2_screen_init()
 {
+    esp_err_t err = ESP_FAIL;
+    // get average CO2 level from last 10 readings
+    // This funciton blocks until the co2 data queue is full
+    uint16_t co2_level = get_co2_level_for_display();
+
     // Clear screen
     err = i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(1000));
     if(err == ESP_OK)
@@ -62,19 +65,20 @@ void co2_screen_init()
         ESP_LOGE(TAG, "Error clearing the screen");
         ESP_LOGW(TAG, "Error is 0x%02X", err);
     }
-
+    
     vTaskDelay(pdMS_TO_TICKS(100));
 
-    //get average CO2 level from last 10 readings
-    uint16_t co2_level = get_co2_level_for_display();
-
     reset_text_buffers();
-    snprintf(display_text_buf_line1, sizeof(display_text_buf_line1), "CO2: %dppm", co2_level);
+    sprintf(display_text_buf_line1, "CO2: %d ppm", co2_level);
 
     err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(1000));
     if(err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error sending string to screen");
+        ESP_LOGE(TAG, "Error sending string to screen: 0x%03X", err);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Displayed: %s", display_text_buf_line1);
     }
 }
 
