@@ -53,7 +53,7 @@ esp_err_t co2_read_data(uint16_t *co2_concentration)
         {
             if(xQueueSend(co2_data_queue, co2_concentration, pdMS_TO_TICKS(5)) != pdTRUE)
             {
-                ESP_LOGI("CO2", "Error adding item to queue");
+                ESP_LOGE("CO2", "Error adding item to queue");
             }
         } 
 

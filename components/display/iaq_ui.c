@@ -98,8 +98,9 @@ void display_task(void *parameter)
         average_humidity = get_average_sensor_data(humid_data_queue, temp_humid_mutex, "HUMID");
         // average_voc = get_average_sensor_data(voc_data_queue, xxx, "VOC");
 
+        set_ui_screen_page(TEMPERATURE_HUMIDITY_SCREEN);
 
-        // Depending on the current screen and if not in sleep mode, update screen with newest data
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        // just for now to see both screens
+        vTaskDelay(pdMS_TO_TICKS(7000));
     }
 }
