@@ -8,13 +8,14 @@
 #include "stdbool.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 
 #define TEMP_SENS_ADDR     0x44
 
 static const char *TAG = "TEMP/HUMID";
 
-QueueHandle_t temperature_data_queue = NULL;
-QueueHandle_t humidity_data_queue    = NULL;
+QueueHandle_t temp_data_queue = NULL;
+QueueHandle_t humid_data_queue    = NULL;
 SemaphoreHandle_t temp_humid_mutex   = NULL;
 
 /*************************
@@ -24,7 +25,7 @@ SemaphoreHandle_t temp_humid_mutex   = NULL;
  * @param humidity is a pointer to the variable where the readable humidity is stored
  * @param temp_unit will determine if the raw temperature data is converted into Celcius or Farenheit, based on user settings
  *************************/
-void calculate_readable_temp_humid(uint8_t data[6], float *temperature, float *humidity) // will eventually want another parameter, telling if user has device in F or C
+void calculate_readable_temp_humid(uint8_t data[6], uint16_t *temperature, uint16_t *humidity) // will eventually want another parameter, telling if user has device in F or C
 {
     uint16_t raw_temp = 0;
     uint16_t raw_humidity = 0;
@@ -46,10 +47,10 @@ void temp_humidity_task(void *parameter)
 {
     uint8_t temp_humid_measure_cmd = {0xFD};
 
-    #ifdef QUEUE_SETUP
-    temperature_data_queue = xQueueCreate(10, sizeof(uint16_t));
+    temp_data_queue = xQueueCreate(10, sizeof(uint16_t));
+    humid_data_queue       = xQueueCreate(10, sizeof(uint16_t));
     temp_humid_mutex = xSemaphoreCreateMutex();
-    if(temperature_data_queue == NULL)
+    if(temp_data_queue == NULL)
     {
         ESP_LOGE(TAG, "Error creating temp data queue");
     }
@@ -61,16 +62,16 @@ void temp_humidity_task(void *parameter)
     {
         ESP_LOGE(TAG, "Error creating temp/humid mutex");
     }
-#endif
+
     while(1)
     {
         esp_err_t err = ESP_FAIL;
         uint8_t sensor_data[6] = {0};
-        float temperature = 0;
-        float humidity = 0;
+        uint16_t temperature = 0;
+        uint16_t humidity = 0;
 
-        //if(xSemaphoreTake(temp_humid_mutex, pdMS_TO_TICKS(1000)) == pdTRUE)
-       // {
+        if(xSemaphoreTake(temp_humid_mutex, pdMS_TO_TICKS(1000)) == pdTRUE)
+        {
             err = i2c_master_transmit(i2c_temp_device_handle, &temp_humid_measure_cmd, sizeof(temp_humid_measure_cmd), pdMS_TO_TICKS(100));
             if(err != ESP_OK)
             {
@@ -89,14 +90,22 @@ void temp_humidity_task(void *parameter)
             if((crc_check(sensor_data, 2) == sensor_data[2]) && (crc_check(&sensor_data[3], 2) == sensor_data[5]))
             {
                 calculate_readable_temp_humid(sensor_data, &temperature, &humidity);
-                ESP_LOGW(TAG, "Measured Temperatue: %f\n Measured Humidity: %f", temperature, humidity);
+                ESP_LOGW(TAG, "Measured Temperatue: %d\n Measured Humidity: %d", temperature, humidity);
+                if(xQueueSend(temp_data_queue, &temperature, pdMS_TO_TICKS(5)) != pdTRUE)
+                {
+                    ESP_LOGE(TAG, "Error adding temperature data to queue");
+                }
+                if(xQueueSend(humid_data_queue, &humidity, pdMS_TO_TICKS(5)) != pdTRUE)
+                {
+                    ESP_LOGE(TAG, "Error adding humidity data to queue");
+                }
             }
             else
             {
                 continue;
             }
-       // }
-       // xSemaphoreGive(temp_humid_mutex);
-        vTaskDelay(pdMS_TO_TICKS(4000));
+        }
+        xSemaphoreGive(temp_humid_mutex);
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }

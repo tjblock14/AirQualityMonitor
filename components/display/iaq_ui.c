@@ -1,11 +1,19 @@
 #include "i2c_config.h"
 #include "iaq_ui.h"
 #include "get_sensor_data.h"
+#include "general_sensors.h"
+#include "co2_sensor.h"
+#include "voc_sensor.h"
+#include "temp_sensor.h"
 #include "ui_screen_inits.h"
 #include "Userbuttons.h"
 #include "user_control.h"
 
 uint8_t clear_display_cmd[2] = {0x7C, 0x2D};
+uint16_t average_co2 = 0;
+uint16_t average_temp = 0;
+uint16_t average_humidity = 0;
+uint16_t average_voc = 0;
 
 display_screen_pages_t get_next_screen_page(display_screen_pages_t current_page)
 {
@@ -75,7 +83,6 @@ void set_ui_screen_page(display_screen_pages_t current_page)
  *******************/
 void display_task(void *parameter)
 {
-
     // Overridden to CO2 screen for testing
     current_page = CO2_SCREEN;
     i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(100));
@@ -84,8 +91,12 @@ void display_task(void *parameter)
     {
         set_ui_screen_page(current_page);
 
-        // Update value to put on screen, depending on the screen
-
+        // Get most recent average value from all sensors
+        // They will block until sensors have all readings
+        average_co2 = get_average_sensor_data(co2_data_queue, co2_mutex, "CO2");
+        average_temp = get_average_sensor_data(temp_data_queue, temp_humid_mutex, "TEMP");
+        average_humidity = get_average_sensor_data(humid_data_queue, temp_humid_mutex, "HUMID");
+        // average_voc = get_average_sensor_data(voc_data_queue, xxx, "VOC");
 
 
         // Depending on the current screen and if not in sleep mode, update screen with newest data

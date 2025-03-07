@@ -54,10 +54,6 @@ void temp_humid_screen_init()
 void co2_screen_init()
 {
     esp_err_t err = ESP_FAIL;
-    // get average CO2 level from last 10 readings
-    // This funciton blocks until the co2 data queue is full
-    uint16_t co2_level = get_average_sensor_data(co2_data_queue, co2_mutex, TAG);
-
     // Clear screen
     err = i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(500));
     if(err == ESP_OK)
@@ -73,7 +69,7 @@ void co2_screen_init()
     vTaskDelay(pdMS_TO_TICKS(100));
 
     reset_text_buffers();
-    sprintf(display_text_buf_line1, "CO2: %d ppm", co2_level);
+    sprintf(display_text_buf_line1, "CO2: %d ppm", average_co2);
 
     err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(500));
     if(err != ESP_OK)

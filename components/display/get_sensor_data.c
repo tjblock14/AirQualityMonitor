@@ -6,13 +6,11 @@
 #include "freertos/queue.h"
 #include "string.h"
 #include "driver/ledc.h"
+#include "iaq_ui.h"
 
 uint16_t received_co2_data[10];
 uint16_t received_temp_data[10];
 uint16_t received_humid_data[10];
-uint16_t average_co2 = 0;
-uint16_t average_temp = 0;
-uint16_t average_humid = 0;
 
 /******************************
  * @brief This function is called after all of the data has been read from the queue, it then calculates and returns the average
@@ -60,6 +58,7 @@ uint16_t get_average_sensor_data(QueueHandle_t sensor_queue, SemaphoreHandle_t s
         }
 
         average_value_for_display = calculate_average_sensor_value(received_sensor_data_from_queue, (sizeof(received_sensor_data_from_queue) / sizeof(received_sensor_data_from_queue[0])));
+        printf("Average %s : %d\r\n", sensor_name, average_value_for_display);
         xSemaphoreGive(sensor_semaphore);
     }
     return average_value_for_display;
@@ -67,7 +66,7 @@ uint16_t get_average_sensor_data(QueueHandle_t sensor_queue, SemaphoreHandle_t s
 
 
 
-void check_c02_thresh(uint16_t average_co2)
+void check_c02_thresh()
 {
     // If the CO2 threshold is reached, turn the buzzer on for two seconds
     if(average_co2 > 900)
