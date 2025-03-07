@@ -8,64 +8,61 @@
 #include "driver/ledc.h"
 
 uint16_t received_co2_data[10];
+uint16_t received_temp_data[10];
+uint16_t received_humid_data[10];
 uint16_t average_co2 = 0;
+uint16_t average_temp = 0;
+uint16_t average_humid = 0;
 
-uint16_t calculate_average_co2()
+/******************************
+ * @brief This function is called after all of the data has been read from the queue, it then calculates and returns the average
+ *****************************/
+uint16_t calculate_average_sensor_value(uint16_t sensor_data_buf[10], size_t sensor_buf_size)
 {
-    uint16_t sum = 0; 
-    uint16_t average_co2 = 0;
+    uint16_t sum = 0;
+    uint16_t average_value = 0;
 
-    for(uint8_t i = 0; i < (sizeof(received_co2_data) / sizeof(received_co2_data[0])); i++)
+    for(uint8_t i = 0; i < sensor_buf_size; i++)
     {
-        sum += received_co2_data[i];
+        sum += sensor_data_buf[i];
     }
 
-    //average out the arrray. Diving by the total array size /  size of one array value gives the amount of values in array
-    average_co2 = sum / (sizeof(received_co2_data) / sizeof(received_co2_data[0]));
+    average_value = sum / sensor_buf_size;
 
-    return average_co2;
+    return average_value;
 }
 
 
-/***
- * 
- * @brief This task is responsible for handling the co2 values in the queue so that it can be output to the web UI
- * 
- * NOTE: This is last prioritiy. Will only get to this is everything else is working on time
- */
-uint16_t get_co2_level_for_display()
+/***************************************
+ * @brief this function will be called from the display task with parameters, depending on the sensor screen active
+ * @param sensor_queue is the queue that holds the most 10 recent reads of the sensor
+ * @param sensor_semaphore is the semaphore used to avoid race conditions with the sensor data
+ * @param sensor_name is a string identifier of which sensor data is being read
+ **************************************/
+uint16_t get_average_sensor_data(QueueHandle_t sensor_queue, SemaphoreHandle_t sensor_semaphore, const char *sensor_name)
 {
-        uint16_t co2_level_for_display = 0;
-
-        //wait until the queue is full to average the data
-        while(uxQueueSpacesAvailable(co2_data_queue) != 0)
+    uint16_t received_sensor_data_from_queue[10] = {0};
+    uint16_t average_value_for_display = 0;
+    // wait for the queue to fill up with 10 values before averaging it out
+    while(uxQueueSpacesAvailable(sensor_queue) != 0)
+    {
+        // if the queue is not full, delay for one second and then check again
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+    if(xSemaphoreTake(sensor_semaphore, pdMS_TO_TICKS(5)) == pdTRUE)
+    {
+        for(uint8_t i = 0; i < (sizeof(received_sensor_data_from_queue) / sizeof(received_sensor_data_from_queue[0])); i++)
         {
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }
-        if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(5)) == pdTRUE)
-        {
-            //reset all data to zero upon new iteration
-            memset(&received_co2_data, 0, sizeof(received_co2_data));
-            co2_level_for_display = 0;
-
-            // Go through the queue and grab all recent CO2 measurements, store in a data buffer
-            for(uint8_t i = 0; i < (sizeof(received_co2_data) / sizeof(received_co2_data[0])); i++)
+            if(xQueueReceive(sensor_queue, &received_sensor_data_from_queue[i], pdMS_TO_TICKS(5)) != pdTRUE)
             {
-                if(xQueueReceive(co2_data_queue, &received_co2_data[i], pdMS_TO_TICKS(5)) != pdTRUE)
-                {
-                    ESP_LOGE("CO2", "Could not receive data from queue");
-                }
+                ESP_LOGE(sensor_name, "Error getting data from %s queue", sensor_name);
             }
-
-            // Once the values have been read and stored from the queue, calculate the average CO2 from the last ten readings
-            co2_level_for_display = calculate_average_co2();
-
-            printf("average co2: %d\n", co2_level_for_display);
-
-            xSemaphoreGive(co2_mutex);
         }
 
-    return co2_level_for_display;
+        average_value_for_display = calculate_average_sensor_value(received_sensor_data_from_queue, (sizeof(received_sensor_data_from_queue) / sizeof(received_sensor_data_from_queue[0])));
+        xSemaphoreGive(sensor_semaphore);
+    }
+    return average_value_for_display;
 }
 
 

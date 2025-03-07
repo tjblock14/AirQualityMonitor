@@ -4,7 +4,7 @@
 
 #define I2C_SDA_PIN 33    //26
 #define I2C_SCL_PIN 34    //25
-#define I2C_MASTER_FREQ 400000
+#define I2C_MASTER_FREQ 100000
 #define I2C_PORT I2C_NUM_0
 
 #include "driver/i2c_master.h"

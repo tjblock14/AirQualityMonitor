@@ -6,6 +6,10 @@
 #include "esp_log.h"
 #include "string.h"
 #include "get_sensor_data.h"
+#include "general_sensors.h"
+#include "co2_sensor.h"
+#include "voc_sensor.h"
+#include "temp_sensor.h"
 
 static const char *TAG = "DISPLAY";
 
@@ -52,10 +56,10 @@ void co2_screen_init()
     esp_err_t err = ESP_FAIL;
     // get average CO2 level from last 10 readings
     // This funciton blocks until the co2 data queue is full
-    uint16_t co2_level = get_co2_level_for_display();
+    uint16_t co2_level = get_average_sensor_data(co2_data_queue, co2_mutex, TAG);
 
     // Clear screen
-    err = i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(1000));
+    err = i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(500));
     if(err == ESP_OK)
     {
         ESP_LOGI(TAG, "Cleared Screen");
@@ -71,7 +75,7 @@ void co2_screen_init()
     reset_text_buffers();
     sprintf(display_text_buf_line1, "CO2: %d ppm", co2_level);
 
-    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(1000));
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(500));
     if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error sending string to screen: 0x%03X", err);

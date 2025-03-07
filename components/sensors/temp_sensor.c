@@ -13,6 +13,10 @@
 
 static const char *TAG = "TEMP/HUMID";
 
+QueueHandle_t temperature_data_queue = NULL;
+QueueHandle_t humidity_data_queue    = NULL;
+SemaphoreHandle_t temp_humid_mutex   = NULL;
+
 /*************************
  * @brief this function takes the raw data from the sensor and converts it into a readable format
  * @param data is the full data array from the sensor read
@@ -42,6 +46,22 @@ void temp_humidity_task(void *parameter)
 {
     uint8_t temp_humid_measure_cmd = {0xFD};
 
+    #ifdef QUEUE_SETUP
+    temperature_data_queue = xQueueCreate(10, sizeof(uint16_t));
+    temp_humid_mutex = xSemaphoreCreateMutex();
+    if(temperature_data_queue == NULL)
+    {
+        ESP_LOGE(TAG, "Error creating temp data queue");
+    }
+    if(humid_data_queue == NULL)
+    {
+        ESP_LOGE(TAG, "Error creating humidity data queue");
+    }
+    if(temp_humid_mutex == NULL)
+    {
+        ESP_LOGE(TAG, "Error creating temp/humid mutex");
+    }
+#endif
     while(1)
     {
         esp_err_t err = ESP_FAIL;
@@ -49,31 +69,34 @@ void temp_humidity_task(void *parameter)
         float temperature = 0;
         float humidity = 0;
 
-        err = i2c_master_transmit(i2c_temp_device_handle, &temp_humid_measure_cmd, sizeof(temp_humid_measure_cmd), pdMS_TO_TICKS(100));
-        if(err != ESP_OK)
-        {
-            ESP_LOGE(TAG, "Error with temp sensor write cmd: 0x%03X", err);
-        }
-        
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        err = i2c_master_receive(i2c_temp_device_handle, sensor_data, sizeof(sensor_data), pdMS_TO_TICKS(100));
-        if(err != ESP_OK)
-        {
-            ESP_LOGE(TAG, "Error with temp sensor read cmd");
-        }
-
-
-        // Ensure CRC is successful for both the temeprature and humidity data before proceeding
-        if((crc_check(sensor_data, 2) == sensor_data[2]) && (crc_check(&sensor_data[3], 2) == sensor_data[5]))
-        {
-            calculate_readable_temp_humid(sensor_data, &temperature, &humidity);
-            ESP_LOGW(TAG, "Measured Temperatue: %f\n Measured Humidity: %f", temperature, humidity);
-        }
-        else
-        {
-            continue;
-        }
-
+        //if(xSemaphoreTake(temp_humid_mutex, pdMS_TO_TICKS(1000)) == pdTRUE)
+       // {
+            err = i2c_master_transmit(i2c_temp_device_handle, &temp_humid_measure_cmd, sizeof(temp_humid_measure_cmd), pdMS_TO_TICKS(100));
+            if(err != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Error with temp sensor write cmd: 0x%03X", err);
+            }
+            
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            err = i2c_master_receive(i2c_temp_device_handle, sensor_data, sizeof(sensor_data), pdMS_TO_TICKS(100));
+            if(err != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Error with temp sensor read cmd");
+            }
+    
+    
+            // Ensure CRC is successful for both the temeprature and humidity data before proceeding
+            if((crc_check(sensor_data, 2) == sensor_data[2]) && (crc_check(&sensor_data[3], 2) == sensor_data[5]))
+            {
+                calculate_readable_temp_humid(sensor_data, &temperature, &humidity);
+                ESP_LOGW(TAG, "Measured Temperatue: %f\n Measured Humidity: %f", temperature, humidity);
+            }
+            else
+            {
+                continue;
+            }
+       // }
+       // xSemaphoreGive(temp_humid_mutex);
         vTaskDelay(pdMS_TO_TICKS(4000));
     }
 }

@@ -38,6 +38,13 @@
         "esp_http_server.h": "c",
         "ledc.h": "c",
         "general_sensors.h": "c",
-        "userbuttons.h": "c"
+        "userbuttons.h": "c",
+        "array": "c",
+        "bitset": "c",
+        "string_view": "c",
+        "format": "c",
+        "initializer_list": "c",
+        "span": "c",
+        "regex": "c"
     },
 }
