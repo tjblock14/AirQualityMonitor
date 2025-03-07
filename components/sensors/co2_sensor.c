@@ -1,45 +1,20 @@
 #include "i2c_config.h"
-#include "sensor_tasks.h"
+#include "general_sensors.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "stdint.h"
 #include "stdbool.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/queue.h"
 
-#define CRC8_POLYNOMIAL 0x31
-#define CRC8_INIT 0xff
+#define CO2_SENS_ADDR_A    0x62     //0x29
+#define CO2_SENS_ADDR_B    0x2A
 
 float co2_value;
-
-/***************
- * @brief CRC function for breadboard CO2 sensor
- * @param data the data read from the sensor
- * @param count amount of bytes
- ***************/
-uint8_t sensirion_common_generate_crc(const uint8_t* data, uint16_t count) 
-{
-    uint16_t current_byte;
-    uint8_t crc = CRC8_INIT;
-    uint8_t crc_bit;
-    /* calculates 8-Bit checksum with given polynomial */
-    for (current_byte = 0; current_byte < count; ++current_byte) 
-    {
-        crc ^= (data[current_byte]);
-        for (crc_bit = 8; crc_bit > 0; --crc_bit) 
-        {
-            if (crc & 0x80)
-                crc = (crc << 1) ^ CRC8_POLYNOMIAL;
-            else
-                crc = (crc << 1);
-        }
-    }
-    return crc;
-}
-
-
-
+QueueHandle_t co2_data_queue = NULL;
+SemaphoreHandle_t co2_mutex = NULL;
 
 /*****************
  * @brief This function simply takes the read data from the sensor, and performs the equation taken from the datasheet
@@ -64,14 +39,14 @@ void convert_co2_data_to_readable(uint16_t *raw_co2_concentration)
 
 
 
-/**
+/******************************
  * @brief This function is responsible for sending a read 
  * @param raw_co2_concentration this is used as an output parameter. This value will be returned so that we can proceed with data
- */
+ **************************/
 esp_err_t co2_read_data(uint16_t *raw_co2_concentration)
 {
     esp_err_t err = ESP_FAIL;
-    uint8_t read_cmd[2] =  {0xec, 0x05};        //{0x16, 0x39};  This is the command for our PCB sensor
+    uint8_t read_cmd[2] =  {0xec, 0x05};   
     uint8_t co2_stop_cmd[2] = {0x3f, 0x86};
     uint8_t sensor_data[3] = {0};
 
@@ -90,10 +65,10 @@ esp_err_t co2_read_data(uint16_t *raw_co2_concentration)
         }
 
         // Perform CRC, only proceed if check is successful
-        uint16_t calculated_crc = sensirion_common_generate_crc(sensor_data, 2);
-        if (calculated_crc != sensor_data[2]) 
+         
+        if (crc_check(sensor_data, 2) != sensor_data[2]) 
         {
-            ESP_LOGE("CO2", "CRC mismatch! Received: 0x%02X, Calculated: 0x%02X", sensor_data[2], calculated_crc);
+            ESP_LOGE("CO2", "CRC mismatch");
             return ESP_FAIL;
         }
         else   // if the crc check was succesful and data is valid, add the measured CO2 value to a queue which will be used by the web server
@@ -119,11 +94,11 @@ esp_err_t co2_read_data(uint16_t *raw_co2_concentration)
     return ESP_OK;
 }
 
-/**
+/**************************
  * @brief Ensure both sensors read a valid value. Further work needed if one did not
  * @param co2_a co2 percentage measured by co2 sensor A
  * @param co2_b co2 percentage measured by co2 sensor B
- */
+ **************************/
 bool did_both_co2_sensors_read_valid(float co2_a, float co2_b)
 {
     float difference = co2_a - co2_b;
@@ -135,5 +110,83 @@ bool did_both_co2_sensors_read_valid(float co2_a, float co2_b)
     else
     {
         return false;
+    }
+}
+
+/**********************************
+ * @brief This task handles communication between the MCU and the CO2 sensor.
+ *        It also handles all logic that needs to be performed on the data read
+ **********************************/
+void co2_task(void *parameter)
+{
+    // 32 start CO2 sensor command split byte by byte so that it can be used in the transmit function
+    uint8_t co2_start_cmd[2] =    {0x21, 0xb1};                          //{0x36, 0x15, 0x00, 0x11};  //the two commands split into byte by byte  
+    
+    // create co2 queue and mutex for data transfer with web UI task
+    co2_data_queue = xQueueCreate(10, sizeof(uint16_t));
+    co2_mutex = xSemaphoreCreateMutex();
+    if(co2_data_queue == NULL)
+    {
+        ESP_LOGE("CO2", "Error creating co2 data queue");
+    }
+    if(co2_mutex == NULL)
+    {
+        ESP_LOGE("CO2", "Error creating co2 mutex");
+    }
+
+    // give time for I2C to initialize before trying to read from sensor on startup
+    vTaskDelay(pdMS_TO_TICKS(30));
+
+    while(1) // continuous task loop
+    {
+        esp_err_t err = ESP_FAIL;
+        uint16_t sensor_a_raw_concentration = 0;
+        uint16_t sensor_b_raw_concentration = 0;
+        float co2_measurement_a = 0;
+        float co2_measurement_b = 0;
+
+        for(uint8_t j = 0; j < 2; j++)  // j = 0 will write the command to sensor to begin measurement. j = 1 will read measurement data from sensors
+        {
+            if(j == 0)  // send command to first sensor to take measurement
+            {
+                err = i2c_master_transmit(i2c_co2_device_handle, co2_start_cmd, sizeof(co2_start_cmd), pdMS_TO_TICKS(100));
+                if(err != ESP_OK)
+                {
+                    ESP_LOGE("CO2 TRANSMIT", "Error writing measure command to sensor with error: 0x%03x", err);
+                }
+
+                // after both sensors receive initial command, give time to take measurement
+                vTaskDelay(pdMS_TO_TICKS(5000));
+            }    
+            else if(j == 1)  // read measurement from sensor A
+            {
+                if(co2_read_data(&sensor_a_raw_concentration) == ESP_OK)
+                {
+                    ESP_LOGI("CO2 Reading", "PPM: %d", sensor_a_raw_concentration);
+                    //co2_measurement_a = ((sensor_a_raw_concentration - 16384.0) / 32768.0) * 100;
+                }
+            }
+
+            if(j == 1) // make sure both sensor measured similar values, average out, and add to queue
+            {
+                if(did_both_co2_sensors_read_valid(co2_measurement_a, co2_measurement_b) == true)
+                {
+                    float avg_co2 = (co2_measurement_a + co2_measurement_b) / 2;
+                    //err = xQueueSend(co2_readings_queue, avg_co2, pdMS_TO_TICKS(10));
+                    //if(err != ESP_OK)
+                    //{
+                    //  ESP_LOGW("CO2", "Failed to add data to queue");
+                   // }
+                }
+                else  //somehow figure out which one was accurate and which one to use
+                {
+
+                }
+
+                //convert_co2_data_to_readable(&sensor_a_raw_concentration);
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
+        //convert data to readable format
     }
 }
