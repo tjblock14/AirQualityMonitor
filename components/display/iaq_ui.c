@@ -10,10 +10,7 @@
 #include "user_control.h"
 
 uint8_t clear_display_cmd[2] = {0x7C, 0x2D};
-uint16_t average_co2 = 0;
-uint16_t average_temp = 0;
-uint16_t average_humidity = 0;
-uint16_t average_voc = 0;
+
 
 display_screen_pages_t get_next_screen_page(display_screen_pages_t current_page)
 {
@@ -83,19 +80,18 @@ void set_ui_screen_page(display_screen_pages_t current_page)
  *******************/
 void display_task(void *parameter)
 {
-    // Overridden to CO2 screen for testing
-    current_page = CO2_SCREEN;
     i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(100));
-
+    
     while(1)
     {
+        current_page = CO2_SCREEN;
         set_ui_screen_page(current_page);
 
         // Get most recent average value from all sensors
         // They will block until sensors have all readings
-        average_co2 = get_average_sensor_data(co2_data_queue, co2_mutex, "CO2");
-        average_temp = get_average_sensor_data(temp_data_queue, temp_humid_mutex, "TEMP");
-        average_humidity = get_average_sensor_data(humid_data_queue, temp_humid_mutex, "HUMID");
+        sensor_data_buffer.average_co2 = get_average_sensor_data(sensor_data_buffer.co2_concentration, &sensor_data_buffer.co2_reading_index, co2_mutex, "CO2");
+        sensor_data_buffer.average_temp = get_average_sensor_data(sensor_data_buffer.temperature, &sensor_data_buffer.temp_reading_index, temp_humid_mutex, "TEMP");
+        sensor_data_buffer.average_humidity = get_average_sensor_data(sensor_data_buffer.humidity, &sensor_data_buffer.humid_reading_index, temp_humid_mutex, "HUMID");
         // average_voc = get_average_sensor_data(voc_data_queue, xxx, "VOC");
 
         set_ui_screen_page(TEMPERATURE_HUMIDITY_SCREEN);

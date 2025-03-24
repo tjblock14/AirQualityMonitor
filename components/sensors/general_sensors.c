@@ -14,6 +14,10 @@
 #define CRC_INIT          0xFF
 #define CRC_POLYNOMIAL    0x31
 
+// create an instance of this struct to be used 
+// RTC_DATA_ATTR will make sure this struct is not lost during deep sleep so it holds onto all readings
+RTC_DATA_ATTR sensor_readings_t sensor_data_buffer = {0};
+
 /***************
  * @brief CRC function for all sensors
  * @param data the data read from the sensor

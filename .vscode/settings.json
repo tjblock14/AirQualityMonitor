@@ -45,6 +45,11 @@
         "format": "c",
         "initializer_list": "c",
         "span": "c",
-        "regex": "c"
+        "regex": "c",
+        "functional": "c",
+        "compare": "cpp",
+        "cstdint": "cpp",
+        "temp_sensor.h": "c",
+        "user_control.h": "c"
     },
 }

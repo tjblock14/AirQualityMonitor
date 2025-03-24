@@ -25,9 +25,4 @@ void set_ui_screen_page(display_screen_pages_t current_page);
 
 extern display_screen_pages_t current_page;
 
-extern uint16_t average_co2;
-extern uint16_t average_temp;
-extern uint16_t average_humidity;
-extern uint16_t average_voc;
-
 #endif // IAQ_UI_H

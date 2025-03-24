@@ -15,12 +15,37 @@
 #include "user_control.h"
 #include "driver/i2c.h"
 #include "Userbuttons.h"
+#include "esp_sleep.h"
 
-//QueueHandle_t temp_readings_queue, humid_readings_queue, voc_readings_queue, co2_readings_queue;
-
-static const char *TAG = "main";
+#define WAKEUP_TIME 5000000
 
 display_screen_pages_t current_page = STARTUP_SCREEN;
+
+/*********************************
+ * 
+ * @brief This task checks to see if all of the semaphores used by the sensors and display are free. If so,
+ *        then all sensors have completed their periodic reading and the device can enter deep sleep with a timer wakeup
+ * 
+ * Will also need to implement button presses etc.
+ */
+void deep_sleep_monitor_task(void *parameter)
+{
+    // give time for other tasks to start
+    vTaskDelay(pdMS_TO_TICKS(4000));
+    ESP_LOGI("DEEP_SLEEP", "Checking if all sensor readings complete.....");
+
+    //check if all mutexes are free
+    // WILL NEED TO ADD VOC CHECK AS WELL
+    while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0))
+    {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    // will sleep for 5 seconds then wakeup for more readings
+    esp_sleep_enable_timer_wakeup(WAKEUP_TIME);
+    ESP_LOGI("DEEP_SLEEP", "Entering Deep Sleep");
+    esp_deep_sleep_start();
+}
 
 void app_main()
 {
@@ -39,7 +64,8 @@ void app_main()
     xTaskCreate(co2_task, "CO2_TASK", 1024 * 3, NULL, 5, NULL);
     //xTaskCreate(voc_task, "VOC_TASK", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(display_task, "DISPLAY_TASK", 1024 * 3, NULL, 5, NULL);
-
     xTaskCreate(user_button_task, "BUTTON_TASK", 1024, NULL, 6, NULL);
    
+    //Lowest priority task
+    xTaskCreate(deep_sleep_monitor_task, "DEEP_SLEEP_MONITOR", 1024 * 2, NULL, 1, NULL);
 }

@@ -14,8 +14,6 @@
 
 static const char *TAG = "TEMP/HUMID";
 
-QueueHandle_t temp_data_queue = NULL;
-QueueHandle_t humid_data_queue    = NULL;
 SemaphoreHandle_t temp_humid_mutex   = NULL;
 
 /*************************
@@ -35,7 +33,7 @@ void calculate_readable_temp_humid(uint8_t data[6], uint16_t *temperature, uint1
 
     //for farenheit
     raw_temp = (data[0] << 8) | data[1];
-    *temperature = -49 + 315 * (raw_temp / 65535.0);     // Temerature in Farenheit
+    *temperature = -49 + 315 * (raw_temp / 65535.0);     // Temperature in Farenheit
 
     raw_humidity = (data[3] << 8) | data[4];
     *humidity = -6 + 125 * (raw_humidity / 65535.0);     // Relative humidity in %
@@ -47,17 +45,7 @@ void temp_humidity_task(void *parameter)
 {
     uint8_t temp_humid_measure_cmd = {0xFD};
 
-    temp_data_queue = xQueueCreate(10, sizeof(uint16_t));
-    humid_data_queue       = xQueueCreate(10, sizeof(uint16_t));
-    temp_humid_mutex = xSemaphoreCreateMutex();
-    if(temp_data_queue == NULL)
-    {
-        ESP_LOGE(TAG, "Error creating temp data queue");
-    }
-    if(humid_data_queue == NULL)
-    {
-        ESP_LOGE(TAG, "Error creating humidity data queue");
-    }
+    temp_humid_mutex = xSemaphoreCreateBinary();
     if(temp_humid_mutex == NULL)
     {
         ESP_LOGE(TAG, "Error creating temp/humid mutex");
@@ -72,6 +60,9 @@ void temp_humidity_task(void *parameter)
 
         if(xSemaphoreTake(temp_humid_mutex, pdMS_TO_TICKS(1000)) == pdTRUE)
         {
+            // Give other sensor tasks the chance to take their mutex as well, ensures it only goes into deep sleep when needed
+            vTaskDelay(pdMS_TO_TICKS(100));
+            
             err = i2c_master_transmit(i2c_temp_device_handle, &temp_humid_measure_cmd, sizeof(temp_humid_measure_cmd), pdMS_TO_TICKS(100));
             if(err != ESP_OK)
             {
@@ -91,13 +82,13 @@ void temp_humidity_task(void *parameter)
             {
                 calculate_readable_temp_humid(sensor_data, &temperature, &humidity);
                 ESP_LOGW(TAG, "Measured Temperatue: %d\n Measured Humidity: %d", temperature, humidity);
-                if(xQueueSend(temp_data_queue, &temperature, pdMS_TO_TICKS(5)) != pdTRUE)
+                
+                if((sensor_data_buffer.temp_reading_index < MAX_SENSOR_READINGS) && (sensor_data_buffer.humid_reading_index < MAX_SENSOR_READINGS))
                 {
-                    ESP_LOGE(TAG, "Error adding temperature data to queue");
-                }
-                if(xQueueSend(humid_data_queue, &humidity, pdMS_TO_TICKS(5)) != pdTRUE)
-                {
-                    ESP_LOGE(TAG, "Error adding humidity data to queue");
+                    sensor_data_buffer.temperature[sensor_data_buffer.temp_reading_index] = temperature;
+                    sensor_data_buffer.humidity[sensor_data_buffer.humid_reading_index] = humidity;
+                    sensor_data_buffer.temp_reading_index++;
+                    sensor_data_buffer.humid_reading_index++;
                 }
             }
             else
@@ -106,6 +97,6 @@ void temp_humidity_task(void *parameter)
             }
         }
         xSemaphoreGive(temp_humid_mutex);
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
