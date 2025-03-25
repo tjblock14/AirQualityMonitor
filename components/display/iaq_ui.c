@@ -80,23 +80,38 @@ void set_ui_screen_page(display_screen_pages_t current_page)
  *******************/
 void display_task(void *parameter)
 {
-    i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(100));
+    // Probably permanently remove since we go deep sleep but idk yet
+    // i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(100));
     
     while(1)
     {
-        current_page = CO2_SCREEN;
-        set_ui_screen_page(current_page);
 
         // Get most recent average value from all sensors
-        // They will block until sensors have all readings
-        sensor_data_buffer.average_co2 = get_average_sensor_data(sensor_data_buffer.co2_concentration, &sensor_data_buffer.co2_reading_index, co2_mutex, "CO2");
-        sensor_data_buffer.average_temp = get_average_sensor_data(sensor_data_buffer.temperature, &sensor_data_buffer.temp_reading_index, temp_humid_mutex, "TEMP");
-        sensor_data_buffer.average_humidity = get_average_sensor_data(sensor_data_buffer.humidity, &sensor_data_buffer.humid_reading_index, temp_humid_mutex, "HUMID");
+        if(sensor_data_buffer.co2_reading_index >= MAX_SENSOR_READINGS)
+        {
+            if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(20)))
+            {
+                sensor_data_buffer.average_co2 = get_average_sensor_data(sensor_data_buffer.co2_concentration, &sensor_data_buffer.co2_reading_index, "CO2");
+                set_ui_screen_page(CO2_SCREEN);
+                xSemaphoreGive(co2_mutex);
+            }
+
+        }
+        
+        // If this is true, both the temperature and humidity readings have reached 10, so average them both out
+        if(sensor_data_buffer.temp_reading_index >= MAX_SENSOR_READINGS)
+        {
+            if(xSemaphoreTake(temp_humid_mutex, pdMS_TO_TICKS(20)))
+            {
+                sensor_data_buffer.average_temp = get_average_sensor_data(sensor_data_buffer.temperature, &sensor_data_buffer.temp_reading_index, "TEMP");
+                sensor_data_buffer.average_humidity = get_average_sensor_data(sensor_data_buffer.humidity, &sensor_data_buffer.humid_reading_index, "HUMID");
+                xSemaphoreGive(temp_humid_mutex);
+            }
+        }
+        
         // average_voc = get_average_sensor_data(voc_data_queue, xxx, "VOC");
 
-        set_ui_screen_page(TEMPERATURE_HUMIDITY_SCREEN);
-
-        // just for now to see both screens
-        vTaskDelay(pdMS_TO_TICKS(7000));
+        // figuring this out to get it working before entering deep sleep
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }

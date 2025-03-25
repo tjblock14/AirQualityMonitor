@@ -50,7 +50,7 @@ esp_err_t co2_read_data(uint16_t *co2_concentration)
             ESP_LOGE(TAG, "CRC mismatch");
             return ESP_FAIL;
         }
-        else   // if the crc check was succesful and data is valid, add the measured CO2 value to a queue which will be used by the web server
+        else   // if the crc check was succesful, add the newest read value to the data array
         {
             if(sensor_data_buffer.co2_reading_index < MAX_SENSOR_READINGS)
             {
@@ -93,15 +93,11 @@ void co2_task(void *parameter)
 
         if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(100)) == pdTRUE) // Ensure that nothing else interacts with the CO2 data while taking a measurement
         {
-            // Give other sensor tasks the chance to take their mutex as well, ensures it only goes into deep sleep when needed
+            // Give other sensor tasks the chance to take their mutex as well, ensures it only goes into deep sleep when needed, and for sensor to wakeup
             vTaskDelay(pdMS_TO_TICKS(100));
 
-            //// Wakeup CO2 sensor every time the device itsel awakens
-           // err = i2c_master_transmit(i2c_co2_device_handle, wakeup_co2_cmd, sizeof(wakeup_co2_cmd), pdMS_TO_TICKS(100));
-            //if(err != ESP_OK)
-            //{
-             //   ESP_LOGE(TAG, "Failed to wake CO2 sensor");
-            //}
+            // Wakeup CO2 sensor every time the device itsel awakens, this sensor does not respond to this command, but it is necessary
+            i2c_master_transmit(i2c_co2_device_handle, wakeup_co2_cmd, sizeof(wakeup_co2_cmd), pdMS_TO_TICKS(100));
 
             err = i2c_master_transmit(i2c_co2_device_handle, co2_start_cmd, sizeof(co2_start_cmd), pdMS_TO_TICKS(100));
             if(err != ESP_OK)
@@ -119,19 +115,18 @@ void co2_task(void *parameter)
             
             // Release the semaphore, power down sensor, and delay so that the deep sleep task has time to check that the semaphore was released
             vTaskDelay(pdMS_TO_TICKS(50));
-            //err = i2c_master_transmit(i2c_co2_device_handle, power_down_co2_cmd, sizeof(power_down_co2_cmd), pdMS_TO_TICKS(100));
-            //if(err != ESP_OK)
-            //{
-              //  ESP_LOGE(TAG, "Error powering down CO2 Sensor before Deep Sleep");
-            //}
-           //else
-            //{
-             //   ESP_LOGI(TAG, "Powered down CO2 Sensor");
-            //}
+            err = i2c_master_transmit(i2c_co2_device_handle, power_down_co2_cmd, sizeof(power_down_co2_cmd), pdMS_TO_TICKS(100));
+            if(err != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Error powering down CO2 Sensor before Deep Sleep");
+            }
+            else
+            {
+                ESP_LOGI(TAG, "Powered down CO2 Sensor");
+            }
         }
-
         xSemaphoreGive(co2_mutex);
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(2000));
     }
         
 }

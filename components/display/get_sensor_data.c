@@ -31,27 +31,17 @@ uint16_t calculate_average_sensor_value(uint16_t sensor_data_buf[10], size_t sen
  * @brief this function will be called from the display task with parameters, depending on the sensor screen active
  * @param sensor_data is a pointer to the specific sensor data array that contains the 10 values to average
  * @param sensor_index is a pointer to the specific sensor index
- * @param sensor_semaphore is the semaphore used to avoid race conditions with the sensor data
  * @param sensor_name is a string identifier of which sensor data is being read
  **************************************/
-uint16_t get_average_sensor_data(void *sensor_data, uint8_t *sensor_index, SemaphoreHandle_t sensor_semaphore, const char *sensor_name)
+uint16_t get_average_sensor_data(uint16_t *sensor_data, uint8_t *sensor_index, const char *sensor_name)
 {
     uint16_t average_value_for_display = 0;
-
-    while(*sensor_index < MAX_SENSOR_READINGS)
-    {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-
-    if(xSemaphoreTake(sensor_semaphore, pdMS_TO_TICKS(5)) == pdTRUE)
-    {
         average_value_for_display = calculate_average_sensor_value(sensor_data, MAX_SENSOR_READINGS);
         printf("Average %s : %d\r\n", sensor_name, average_value_for_display);
 
-        memset(sensor_data, 0, sizeof(sensor_data));
+        memset(sensor_data, 0, MAX_SENSOR_READINGS * sizeof(uint16_t));
         *sensor_index = 0;
-        xSemaphoreGive(sensor_semaphore);
-    }
+
     return average_value_for_display;
 }
 

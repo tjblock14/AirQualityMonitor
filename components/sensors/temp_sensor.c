@@ -62,7 +62,7 @@ void temp_humidity_task(void *parameter)
         {
             // Give other sensor tasks the chance to take their mutex as well, ensures it only goes into deep sleep when needed
             vTaskDelay(pdMS_TO_TICKS(100));
-            
+
             err = i2c_master_transmit(i2c_temp_device_handle, &temp_humid_measure_cmd, sizeof(temp_humid_measure_cmd), pdMS_TO_TICKS(100));
             if(err != ESP_OK)
             {
@@ -97,6 +97,7 @@ void temp_humidity_task(void *parameter)
             }
         }
         xSemaphoreGive(temp_humid_mutex);
-        vTaskDelay(pdMS_TO_TICKS(1000));
+         // only take one measurement before entering deep sleep
+        vTaskDelay(pdMS_TO_TICKS(2000));
     }
 }
