@@ -35,8 +35,7 @@ void deep_sleep_monitor_task(void *parameter)
     ESP_LOGI("DEEP_SLEEP", "Checking if all sensor readings complete.....");
 
     //check if all mutexes are free
-    // WILL NEED TO ADD VOC CHECK AS WELL
-    while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0))
+    while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0))
     {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -62,7 +61,7 @@ void app_main()
     //initialize tasks
     xTaskCreate(temp_humidity_task, "TEMP_HUMIDITY_TASk", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(co2_task, "CO2_TASK", 1024 * 3, NULL, 5, NULL);
-    //xTaskCreate(voc_task, "VOC_TASK", 1024 * 3, NULL, 5, NULL);
+    xTaskCreate(voc_task, "VOC_TASK", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(display_task, "DISPLAY_TASK", 1024 * 3, NULL, 4, NULL);
     xTaskCreate(user_button_task, "BUTTON_TASK", 1024, NULL, 6, NULL);
    

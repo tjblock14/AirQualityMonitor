@@ -6,6 +6,7 @@
 #include "freertos/semphr.h"
 
 extern SemaphoreHandle_t temp_humid_mutex;
+extern QueueHandle_t     temp_humid_voc_queue;
 
 void temp_humidity_task(void *parameter);
 

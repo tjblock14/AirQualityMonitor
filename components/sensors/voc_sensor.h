@@ -2,8 +2,11 @@
 #define VOC_SENSOR_H
 
 #include "stdint.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
+extern SemaphoreHandle_t voc_mutex;
 
 void voc_task(void *parameter);
-void voc_select_channel(uint8_t channel);
 
 #endif  //VOC_SENSOR_H
