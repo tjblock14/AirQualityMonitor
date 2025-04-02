@@ -3,6 +3,7 @@
 
 #include "FreeRTOS/FreeRTOS.h"
 #include "FreeRTOS/queue.h"
+#include "stdbool.h"
 
 #define PWR_BTN_PIN       14
 #define USR_BTN_ONE_PIN   10

@@ -11,6 +11,18 @@ QueueHandle_t user_button_queue = NULL;
 const gpio_num_t USER_BUTTONS[] = {USR_BTN_ONE_PIN, USR_BTN_TWO_PIN, USR_BTN_THREE_PIN, USR_BTN_FOUR_PIN, PWR_BTN_PIN};
 const size_t NUM_BUTTONS = sizeof(USER_BUTTONS) / sizeof(USER_BUTTONS[0]);
 
+// Used to keep the device from entering deep sleep if a button has recently been pressed (user interaction)
+bool recent_button_press = false;
+
+/*******************************************
+ * @brief This function will be called by the deep sleep task to check if the user has recently interacted with the device. This will prevent
+ *        the device from entering deep sleep mode if there has been recent interaction
+ *******************************************/
+bool check_recent_user_interaction()
+{
+
+}
+
 /*********************
  * @brief This function debounces button presses to ensure that when a button is pressed, it is only read once, 
  *        rather than a few times due to the signal ripple when a button is pressed
@@ -21,11 +33,11 @@ bool user_button_debounce()
     if((current_time - last_button_press_time) > DEBOUNCE_DELAY)
     {
         last_button_press_time = current_time;
-        return true;
+        return true; // Button successfully debounced, button was pressed
     }
     else
     {
-        return false;
+        return false; // False button press
     }
 }
 
@@ -33,13 +45,16 @@ bool user_button_debounce()
  * @brief This function is called when a button press is detected. It will debounce the button press, and then add
  *        the ID of the pressed button to the button queue
  */
-static void IRAM_ATTR user_button_isr_handler(void* arg)
+static void IRAM_ATTR user_button_isr_handler(void* id)
 {
   if(user_button_debounce())
   {
     // Add the ID of the button that was pressed to the queue
-    int button_press_id = (int)arg;
+    int button_press_id = (int)id;
     xQueueSendFromISR(user_button_queue, &button_press_id, NULL);
+
+    // Set recent button press variable to true
+    recent_button_press = true;
   }  
 }
 
