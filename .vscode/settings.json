@@ -50,6 +50,8 @@
         "compare": "cpp",
         "cstdint": "cpp",
         "temp_sensor.h": "c",
-        "user_control.h": "c"
+        "user_control.h": "c",
+        "voc_sensor.h": "c",
+        "sensirion_gas_index_algorithm.h": "c"
     },
 }

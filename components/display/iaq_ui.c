@@ -82,14 +82,15 @@ void display_task(void *parameter)
 {
     // Probably permanently remove since we go deep sleep but idk yet
     // i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(100));
-    
+
+
     while(1)
     {
 
         // Get most recent average value from all sensors
         if(sensor_data_buffer.co2_reading_index >= MAX_SENSOR_READINGS)
         {
-            if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(20)))
+            if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(20)) == pdTRUE)
             {
                 sensor_data_buffer.average_co2 = get_average_sensor_data(sensor_data_buffer.co2_concentration, &sensor_data_buffer.co2_reading_index, "CO2");
                 set_ui_screen_page(CO2_SCREEN);
@@ -101,7 +102,7 @@ void display_task(void *parameter)
         // If this is true, both the temperature and humidity readings have reached 10, so average them both out
         if(sensor_data_buffer.temp_reading_index >= MAX_SENSOR_READINGS)
         {
-            if(xSemaphoreTake(temp_humid_mutex, pdMS_TO_TICKS(20)))
+            if(xSemaphoreTake(temp_humid_mutex, pdMS_TO_TICKS(20)) == pdTRUE)
             {
                 sensor_data_buffer.average_temp = get_average_sensor_data(sensor_data_buffer.temperature, &sensor_data_buffer.temp_reading_index, "TEMP");
                 sensor_data_buffer.average_humidity = get_average_sensor_data(sensor_data_buffer.humidity, &sensor_data_buffer.humid_reading_index, "HUMID");
@@ -109,6 +110,14 @@ void display_task(void *parameter)
             }
         }
         
+        if(sensor_data_buffer.voc_reading_index >= MAX_SENSOR_READINGS)
+        {
+            if(xSemaphoreTake(voc_mutex, pdMS_TO_TICKS(50)) == pdTRUE)
+            {
+                sensor_data_buffer.average_voc = get_average_sensor_data(sensor_data_buffer.voc_measurement, &sensor_data_buffer.voc_reading_index, "VOC");
+                xSemaphoreGive(voc_mutex);
+            }
+        }
         // average_voc = get_average_sensor_data(voc_data_queue, xxx, "VOC");
 
         // figuring this out to get it working before entering deep sleep

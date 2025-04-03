@@ -34,6 +34,13 @@
      .device_address = 0x44,
      .scl_speed_hz = I2C_MASTER_FREQ
  };
+
+ i2c_master_dev_handle_t i2c_voc_device_handle;
+ i2c_device_config_t i2c_voc_device = {
+     .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+     .device_address = 0x59,
+     .scl_speed_hz = I2C_MASTER_FREQ
+ };
  
  // Setup for Display as I2C device
  i2c_master_dev_handle_t i2c_display_device_handle;
@@ -96,6 +103,16 @@
      else
      {
          ESP_LOGE(TAG, "Error adding temp device to I2C bus");
+     }
+
+     err = i2c_master_bus_add_device(i2c_bus_handle, &i2c_voc_device, &i2c_voc_device_handle);
+     if(err == ESP_OK)
+     {
+         ESP_LOGI(TAG, "VOC Device added to I2C bus");
+     }
+     else
+     {
+         ESP_LOGE(TAG, "Error adding VOC device to I2C bus");
      }
  
      // Configure the LEDC timer for the PWM signal

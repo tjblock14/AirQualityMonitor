@@ -15,6 +15,7 @@
 static const char *TAG = "TEMP/HUMID";
 
 SemaphoreHandle_t temp_humid_mutex   = NULL;
+QueueHandle_t     temp_humid_voc_queue = NULL;
 
 /*************************
  * @brief this function takes the raw data from the sensor and converts it into a readable format
@@ -28,8 +29,7 @@ void calculate_readable_temp_humid(uint8_t data[6], uint16_t *temperature, uint1
     uint16_t raw_temp = 0;
     uint16_t raw_humidity = 0;
 
-    // for celsius
-    //float temperature = -45 + 175 * (raw_temp / 65535.0);  // Temperature in Celsius
+    // floattemperature_celsius = -45 + 175 * (raw_temp / 65535.0);  // Temperature in Celsius
 
     //for farenheit
     raw_temp = (data[0] << 8) | data[1];
@@ -45,11 +45,13 @@ void temp_humidity_task(void *parameter)
 {
     uint8_t temp_humid_measure_cmd = {0xFD};
 
-    temp_humid_mutex = xSemaphoreCreateBinary();
+    temp_humid_mutex = xSemaphoreCreateMutex();
     if(temp_humid_mutex == NULL)
     {
         ESP_LOGE(TAG, "Error creating temp/humid mutex");
     }
+
+
 
     while(1)
     {
@@ -57,6 +59,13 @@ void temp_humidity_task(void *parameter)
         uint8_t sensor_data[6] = {0};
         uint16_t temperature = 0;
         uint16_t humidity = 0;
+
+        // Create Queue to send the raw data to VOC sensor
+        temp_humid_voc_queue =  xQueueCreate(1, sizeof(sensor_data));
+        if(temp_humid_voc_queue == NULL)
+        {
+            ESP_LOGE(TAG, "Error creating queue");
+        }
 
         if(xSemaphoreTake(temp_humid_mutex, pdMS_TO_TICKS(1000)) == pdTRUE)
         {
@@ -80,6 +89,9 @@ void temp_humidity_task(void *parameter)
             // Ensure CRC is successful for both the temeprature and humidity data before proceeding
             if((crc_check(sensor_data, 2) == sensor_data[2]) && (crc_check(&sensor_data[3], 2) == sensor_data[5]))
             {
+                // Send raw data to voc sensor
+                xQueueSend(temp_humid_voc_queue, sensor_data, pdMS_TO_TICKS(50));
+
                 calculate_readable_temp_humid(sensor_data, &temperature, &humidity);
                 ESP_LOGW(TAG, "Measured Temperatue: %d\n Measured Humidity: %d", temperature, humidity);
                 
@@ -98,6 +110,6 @@ void temp_humidity_task(void *parameter)
         }
         xSemaphoreGive(temp_humid_mutex);
          // only take one measurement before entering deep sleep
-        vTaskDelay(pdMS_TO_TICKS(2000));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
