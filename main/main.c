@@ -59,12 +59,12 @@ void app_main()
 
 
     //initialize tasks
-    xTaskCreate(temp_humidity_task, "TEMP_HUMIDITY_TASk", 1024 * 3, NULL, 5, NULL);
-    xTaskCreate(co2_task, "CO2_TASK", 1024 * 3, NULL, 5, NULL);
+    //xTaskCreate(temp_humidity_task, "TEMP_HUMIDITY_TASk", 1024 * 3, NULL, 5, NULL);
+    //xTaskCreate(co2_task, "CO2_TASK", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(voc_task, "VOC_TASK", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(display_task, "DISPLAY_TASK", 1024 * 3, NULL, 4, NULL);
-    xTaskCreate(user_button_task, "BUTTON_TASK", 1024, NULL, 6, NULL);
+    //xTaskCreate(user_button_task, "BUTTON_TASK", 1024, NULL, 6, NULL);
    
     //Lowest priority task
-    xTaskCreate(deep_sleep_monitor_task, "DEEP_SLEEP_MONITOR", 1024 * 2, NULL, 1, NULL);
+    //xTaskCreate(deep_sleep_monitor_task, "DEEP_SLEEP_MONITOR", 1024 * 2, NULL, 1, NULL);
 }

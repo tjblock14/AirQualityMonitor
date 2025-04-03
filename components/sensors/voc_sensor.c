@@ -134,6 +134,8 @@ void voc_task(void *parameter)
 
                 // These next two lines prepare the algorithm for deep sleep, retrieving the states before losing all data
                 GasIndexAlgorithm_get_states(&voc_params, &voc_state0, &voc_state1);
+
+                printf("State 0: %ld, \r\n State 1: %ld", voc_state0, voc_state1);
                 voc_states_valid = true;
             }
 
