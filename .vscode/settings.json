@@ -53,6 +53,7 @@
         "user_control.h": "c",
         "voc_sensor.h": "c",
         "sensirion_gas_index_algorithm.h": "c",
-        "wifi.h": "c"
+        "wifi.h": "c",
+        "power_button.h": "c"
     },
 }

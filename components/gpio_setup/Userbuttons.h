@@ -14,5 +14,6 @@
 extern QueueHandle_t user_button_queue;
 void button_init();
 bool was_button_held_for_ten_seconds(int btn_id);
+bool check_recent_user_interaction();
 
 #endif // USERBUTTONS_H

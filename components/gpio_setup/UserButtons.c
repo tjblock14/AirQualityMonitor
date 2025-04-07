@@ -4,11 +4,12 @@
 #include "FreeRTOS/FreeRTOS.h"
 #include "FreeRTOS/queue.h"
 #include "Userbuttons.h"
+#include "esp_log.h"
 
-#define DEBOUNCE_DELAY (300000)
-#define AVOID_SLEEP_TIME (pdMS_TO_TICKS(120000))  // 2 minutes after last button press, enter deep sleep
-#define TEN_SECOND_HOLD (pdMS_TO_TICKS(10000))   // 10 seconds 
-uint32_t last_button_press_time = 0;   // Initializing this to avoid sleep time could help prevent an issue with always avoiding deep sleep for 2 minutes on wakeup
+#define DEBOUNCE_DELAY (30000)   // 30ms in us
+#define AVOID_SLEEP_TIME (120000000)  // 2 minutes in us
+#define TEN_SECOND_HOLD (10000000)   // 10 seconds in us 
+uint32_t last_button_press_time = AVOID_SLEEP_TIME;   // Initializing this to avoid sleep time could help prevent an issue with always avoiding deep sleep for 2 minutes on wakeup
 uint8_t last_button_pressed_id = 0;
 QueueHandle_t user_button_queue = NULL;
 
@@ -46,7 +47,7 @@ bool was_button_held_for_ten_seconds(int btn_id)
  ***********************************************/
 bool was_button_held_for_three_seconds()
 {
-    
+    return false;
 }
 
 /*******************************************
@@ -92,10 +93,11 @@ bool user_button_debounce()
  */
 static void IRAM_ATTR user_button_isr_handler(void* id)
 {
+    ESP_EARLY_LOGW("BTN", "ISR TRIGGERED");
   if(user_button_debounce())
   {
     // Add the ID of the button that was pressed to the queue
-    uint8_t button_press_id = (uint8_t)id;
+    int button_press_id = (int)id;
     xQueueSendFromISR(user_button_queue, &button_press_id, NULL);
 
     // Set recent button press variable to true and set id of last button press
@@ -129,5 +131,5 @@ void button_init()
     }  
 
     // Create the queue that will be read from for button presses
-    user_button_queue = xQueueCreate(6, sizeof(USR_BTN_ONE_PIN));
+    user_button_queue = xQueueCreate(6, sizeof(int));
 }
