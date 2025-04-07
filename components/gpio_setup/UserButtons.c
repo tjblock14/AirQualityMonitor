@@ -1,18 +1,53 @@
 #include "driver/gpio.h"
 #include "esp_timer.h"
+#include "esp_sleep.h"
 #include "FreeRTOS/FreeRTOS.h"
 #include "FreeRTOS/queue.h"
 #include "Userbuttons.h"
 
-#define DEBOUNCE_DELAY (30)
-uint32_t last_button_press_time = 0;
+#define DEBOUNCE_DELAY (300000)
+#define AVOID_SLEEP_TIME (pdMS_TO_TICKS(120000))  // 2 minutes after last button press, enter deep sleep
+#define TEN_SECOND_HOLD (pdMS_TO_TICKS(10000))   // 10 seconds 
+uint32_t last_button_press_time = 0;   // Initializing this to avoid sleep time could help prevent an issue with always avoiding deep sleep for 2 minutes on wakeup
+uint8_t last_button_pressed_id = 0;
 QueueHandle_t user_button_queue = NULL;
 
 const gpio_num_t USER_BUTTONS[] = {USR_BTN_ONE_PIN, USR_BTN_TWO_PIN, USR_BTN_THREE_PIN, USR_BTN_FOUR_PIN, PWR_BTN_PIN};
 const size_t NUM_BUTTONS = sizeof(USER_BUTTONS) / sizeof(USER_BUTTONS[0]);
 
-// Used to keep the device from entering deep sleep if a button has recently been pressed (user interaction)
-bool recent_button_press = false;
+/******************************************
+ * @brief Checks if the button that is pressed was held for 10 seconds. Only needed for power button
+ * @returns true if held for 10 seconds, false if not
+ *****************************************/
+bool was_button_held_for_ten_seconds(int btn_id)
+{
+    uint32_t press_time = 0;
+    uint32_t release_time = 0;
+    uint32_t press_duration = 0;
+
+    press_time = esp_timer_get_time();
+    while((gpio_get_level(btn_id) == 0) && (esp_timer_get_time() - press_time) <= TEN_SECOND_HOLD)
+    {}  // empty while loop, This will wait until either the button was held for 10 seconds, or the button was released before then
+
+    release_time = esp_timer_get_time();
+    press_duration = release_time - press_time;
+    if(press_duration >= TEN_SECOND_HOLD)
+    {
+        return true;
+    }
+    else // not held for 10 seconds
+    {
+        return false;
+    }
+}
+
+/**********************************************
+ * @brief Check if button was pressed and held for three seconds, used for power button to force enter sleep mode
+ ***********************************************/
+bool was_button_held_for_three_seconds()
+{
+    
+}
 
 /*******************************************
  * @brief This function will be called by the deep sleep task to check if the user has recently interacted with the device. This will prevent
@@ -20,7 +55,17 @@ bool recent_button_press = false;
  *******************************************/
 bool check_recent_user_interaction()
 {
-
+    // Might want to check which button was pressed too, because if pwr button held for 3 seconds, enter sleep
+    // If two minutes have passed since last user interaction, set flag to let deep sleep task enter deep sleep
+    // Maybe need to work on this function
+    if(last_button_press_time >= AVOID_SLEEP_TIME)
+    {
+       return false;
+    }
+    else
+    {
+        return true; // Will prevent deep sleep
+    }
 }
 
 /*********************
@@ -50,11 +95,12 @@ static void IRAM_ATTR user_button_isr_handler(void* id)
   if(user_button_debounce())
   {
     // Add the ID of the button that was pressed to the queue
-    int button_press_id = (int)id;
+    uint8_t button_press_id = (uint8_t)id;
     xQueueSendFromISR(user_button_queue, &button_press_id, NULL);
 
-    // Set recent button press variable to true
-    recent_button_press = true;
+    // Set recent button press variable to true and set id of last button press
+   // recent_button_press = true;
+    last_button_pressed_id = button_press_id;
   }  
 }
 

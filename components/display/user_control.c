@@ -94,6 +94,21 @@ void decrement_gas_setpoint()
     else{} // Do nothing
 }
 
+void handle_pwr_btn_press()
+{
+    bool held_for_ten_seconds = false;
+    held_for_ten_seconds = was_button_held_for_ten_seconds(PWR_BTN_PIN);
+
+    if(held_for_ten_seconds)
+    {
+
+    }
+    else  // I think if not held for 10 seocnds, but held for 3, we will put to sleep, need to figure this out still, might just do sleep on press
+    {
+
+    }
+}
+
 /**********************************
  * @brief This funciton will read the ID of the pressed button from the queue, and then determine
  *        proceed with necessary steps, specific to the button
@@ -119,7 +134,9 @@ void handle_button_press(uint8_t btn_id)
                 decrement_gas_setpoint();
                 break;
             case PWR_BTN_PIN:
-                
+                handle_pwr_btn_press();
+                break;
+            default:
                 break;
         }
 }
@@ -132,7 +149,7 @@ void user_button_task(void *parameter)
         uint8_t button_pressed_id = 0;
         if(xQueueReceive(user_button_queue, &button_pressed_id, pdMS_TO_TICKS(10)))
         {
-            handle_button_press(button_pressed_id);
+             handle_button_press(button_pressed_id);
         }
     }
 }
