@@ -118,7 +118,9 @@ void display_task(void *parameter)
                 xSemaphoreGive(voc_mutex);
             }
         }
-        // average_voc = get_average_sensor_data(voc_data_queue, xxx, "VOC");
+        
+        check_user_threshold();
+        check_general_safety_value();
 
         // figuring this out to get it working before entering deep sleep
         vTaskDelay(pdMS_TO_TICKS(50));
