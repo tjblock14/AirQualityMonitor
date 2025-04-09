@@ -93,7 +93,7 @@ bool user_button_debounce()
  */
 static void IRAM_ATTR user_button_isr_handler(void* id)
 {
-    ESP_EARLY_LOGW("BTN", "ISR TRIGGERED");
+ESP_EARLY_LOGW("BTN", "ISR TRIGGERED");
   if(user_button_debounce())
   {
     // Add the ID of the button that was pressed to the queue

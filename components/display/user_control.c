@@ -5,7 +5,7 @@
 #include "Userbuttons.h"
 #include "iaq_ui.h"
 #include "ui_screen_inits.h"
-#include "power_button.h"
+// #include "power_button.h"
 
 // User cannot set threshold greater than this, as this is already dangerous
 #define MAX_CO2_THRESHOLD 1000
