@@ -9,12 +9,14 @@
  #include "esp_err.h"
  #include "esp_log.h" 
  #include "driver/ledc.h"
+ #include "driver/gpio.h"
  
  #define LEDC_OUTPUT_PIN 12 
  #define LEDC_CHANNEL LEDC_CHANNEL_0 // Use one of the 8 channels
  #define LEDC_TIMER LEDC_TIMER_0     // Use one of the 4 timers
  #define LEDC_MODE LEDC_HIGH_SPEED_MODE // LEDC has high and low speed modes
- #define LEDC_FREQUENCY 490         
+ #define LEDC_FREQUENCY 490      
+   
  
  static const char *TAG = "I2C";
  

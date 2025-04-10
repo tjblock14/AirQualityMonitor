@@ -10,6 +10,7 @@
 #define USR_BTN_TWO_PIN   13
 #define USR_BTN_THREE_PIN 11
 #define USR_BTN_FOUR_PIN  10
+#define LARGE_BUZZER_PIN  3
 
 extern QueueHandle_t user_button_queue;
 void button_init();

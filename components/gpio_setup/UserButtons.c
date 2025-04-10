@@ -107,18 +107,35 @@ static void IRAM_ATTR user_button_isr_handler(void* id)
 }
 
 
+gpio_config_t lrg_bzr_pin_config = {
+    .mode = GPIO_MODE_OUTPUT,
+    .intr_type = GPIO_MODE_OUTPUT,
+    .pull_down_en = GPIO_PULLDOWN_DISABLE,
+    .pull_up_en   = GPIO_PULLUP_DISABLE,
+    .pin_bit_mask = (1ULL << LARGE_BUZZER_PIN)
+};
+
+    // Baisc configuration for interrupt, pin will be set before the ISR is initialized
+    gpio_config_t btn_config = {
+        .mode = GPIO_MODE_INPUT,
+        .intr_type = GPIO_INTR_NEGEDGE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE
+};
+
 /******************
  * @brief Configures the GPIO interrupts for all five buttons
  *****************/
 void button_init()
 {
+	gpio_config(&lrg_bzr_pin_config);
+	
     // Baisc configuration for interrupt, pin will be set before the ISR is initialized
     gpio_config_t btn_config = {
             .mode = GPIO_MODE_INPUT,
             .intr_type = GPIO_INTR_NEGEDGE,
             .pull_down_en = GPIO_PULLDOWN_DISABLE,
-            .pull_up_en = GPIO_PULLUP_DISABLE,
-            .pin_bit_mask = GPIO_INPUT_PIN_SEL
+            .pull_up_en = GPIO_PULLUP_DISABLE
     };
 
     ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1));
