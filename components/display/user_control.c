@@ -5,7 +5,7 @@
 #include "Userbuttons.h"
 #include "iaq_ui.h"
 #include "ui_screen_inits.h"
-// #include "power_button.h"
+#include "power_button.h"
 
 // User cannot set threshold greater than this, as this is already dangerous
 #define MAX_CO2_THRESHOLD 1000
@@ -100,7 +100,7 @@ void decrement_gas_setpoint()
  * @brief This funciton will read the ID of the pressed button from the queue, and then determine
  *        proceed with necessary steps, specific to the button
  **********************************/
-void handle_button_press(uint8_t btn_id)
+void handle_button_press(int btn_id)
 {
     //will probably want to do the queue receive in the main loop of display task,
     // and if button is received, then call this funciton and send button id as parameter
@@ -115,13 +115,13 @@ void handle_button_press(uint8_t btn_id)
                 get_setpoint_screen();
                 break;
             case USR_BTN_THREE_PIN:
-                increment_gas_setpoint();
+               // increment_gas_setpoint();
                 break;
             case USR_BTN_FOUR_PIN:
-                decrement_gas_setpoint();
+                //decrement_gas_setpoint();
                 break;
             case PWR_BTN_PIN:
-                handle_pwr_btn_press();
+                //handle_pwr_btn_press();
                 break;
             default:
                 break;
@@ -133,11 +133,11 @@ void user_button_task(void *parameter)
     while(1)
     {
         // Check for button presses, task blocked if nothing in queue
-        uint8_t button_pressed_id = 0;
+        int button_pressed_id = 0;
         if(xQueueReceive(user_button_queue, &button_pressed_id, portMAX_DELAY))
         {
             ESP_LOGI("BTN", "Button press sensed at GPIO %d", button_pressed_id);
-             handle_button_press(button_pressed_id);
+            handle_button_press(button_pressed_id);
         }
     }
 }

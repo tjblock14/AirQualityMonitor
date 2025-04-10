@@ -6,6 +6,7 @@
 #include "Userbuttons.h"
 #include "esp_log.h"
 
+#define GPIO_INPUT_PIN_SEL  ((1ULL << USR_BTN_ONE_PIN) | (1ULL << USR_BTN_TWO_PIN) | (1ULL << USR_BTN_THREE_PIN) | (1ULL << USR_BTN_FOUR_PIN) | (1ULL << PWR_BTN_PIN))
 #define DEBOUNCE_DELAY (30000)   // 30ms in us
 #define AVOID_SLEEP_TIME (120000000)  // 2 minutes in us
 #define TEN_SECOND_HOLD (10000000)   // 10 seconds in us 
@@ -13,7 +14,7 @@ uint32_t last_button_press_time = AVOID_SLEEP_TIME;   // Initializing this to av
 uint8_t last_button_pressed_id = 0;
 QueueHandle_t user_button_queue = NULL;
 
-const gpio_num_t USER_BUTTONS[] = {USR_BTN_ONE_PIN, USR_BTN_TWO_PIN, USR_BTN_THREE_PIN, USR_BTN_FOUR_PIN, PWR_BTN_PIN};
+const int USER_BUTTONS[] = {USR_BTN_ONE_PIN, USR_BTN_TWO_PIN, USR_BTN_THREE_PIN, USR_BTN_FOUR_PIN, PWR_BTN_PIN};
 const size_t NUM_BUTTONS = sizeof(USER_BUTTONS) / sizeof(USER_BUTTONS[0]);
 
 /******************************************
@@ -93,7 +94,6 @@ bool user_button_debounce()
  */
 static void IRAM_ATTR user_button_isr_handler(void* id)
 {
-ESP_EARLY_LOGW("BTN", "ISR TRIGGERED");
   if(user_button_debounce())
   {
     // Add the ID of the button that was pressed to the queue
@@ -117,19 +117,19 @@ void button_init()
             .mode = GPIO_MODE_INPUT,
             .intr_type = GPIO_INTR_NEGEDGE,
             .pull_down_en = GPIO_PULLDOWN_DISABLE,
-            .pull_up_en = GPIO_PULLUP_DISABLE
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pin_bit_mask = GPIO_INPUT_PIN_SEL
     };
 
     ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1));
 
     // Initialize all five buttons as interrupts
+    ESP_ERROR_CHECK(gpio_config(&btn_config));
     for(uint8_t i = 0; i < NUM_BUTTONS ; i++)
     {
-        btn_config.pin_bit_mask = (1ULL << USER_BUTTONS[i]);
-        ESP_ERROR_CHECK(gpio_config(&btn_config));
         ESP_ERROR_CHECK(gpio_isr_handler_add(USER_BUTTONS[i], user_button_isr_handler, (void*)USER_BUTTONS[i]));
     }  
 
     // Create the queue that will be read from for button presses
-    user_button_queue = xQueueCreate(6, sizeof(int));
+    user_button_queue = xQueueCreate(6, sizeof(USR_BTN_ONE_PIN));
 }

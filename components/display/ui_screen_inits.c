@@ -37,14 +37,9 @@ void clear_display_screen()
 {
     esp_err_t err = ESP_FAIL;
     err = i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(500));
-    if(err == ESP_OK)
-    {
-        ESP_LOGI(TAG, "Cleared Screen");
-    }
-    else
+    if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error clearing the screen");
-        ESP_LOGW(TAG, "Error is 0x%02X", err);
     }
 }
 
@@ -78,9 +73,6 @@ void temp_humid_screen_init()
 {
     esp_err_t err = ESP_FAIL;
     clear_display_screen();
-    
-    //give time for clear command to complete
-    vTaskDelay(pdMS_TO_TICKS(100));
 
     reset_text_buffers();
     sprintf(display_text_buf_line1, "Temp: %dF", sensor_data_buffer.average_temp);
@@ -91,10 +83,6 @@ void temp_humid_screen_init()
     {
         ESP_LOGE(TAG, "Error sending temperature string to screen");
     }
-    else
-    {
-        ESP_LOGI(TAG, "Displayed: %s", display_text_buf_line1);
-    }
 
     // Move cursor to second row
     move_cursor_to_second_row();
@@ -104,10 +92,6 @@ void temp_humid_screen_init()
     {
         ESP_LOGE(TAG, "Error sending humidity string to screen");
     }
-    else
-    {
-        ESP_LOGI(TAG, "Displayed: %s", display_text_buf_line2);
-    }
 }
 
 void co2_screen_init()
@@ -115,8 +99,6 @@ void co2_screen_init()
     esp_err_t err = ESP_FAIL;
     // Clear screen
     clear_display_screen();
-    
-    vTaskDelay(pdMS_TO_TICKS(100));
 
     reset_text_buffers();
     sprintf(display_text_buf_line1, "CO2: %d ppm", sensor_data_buffer.average_co2);
@@ -126,15 +108,22 @@ void co2_screen_init()
     {
         ESP_LOGE(TAG, "Error sending CO2 string to screen: 0x%03X", err);
     }
-    else
-    {
-        ESP_LOGI(TAG, "Displayed: %s", display_text_buf_line1);
-    }
 }
 
 void voc_screen_init()
 {
+    esp_err_t err = ESP_FAIL;
 
+    // Clear screen and text buffers before writing anything
+    clear_display_screen(); 
+    reset_text_buffers();
+
+    sprintf(display_text_buf_line1, "VOC Index: %ld", sensor_data_buffer.average_voc);
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(100));
+    if(err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error sending VOC string to screen");
+    }
 }
 
 void battery_screen_init()

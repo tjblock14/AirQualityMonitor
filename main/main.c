@@ -34,8 +34,6 @@ void deep_sleep_monitor_task(void *parameter)
     vTaskDelay(pdMS_TO_TICKS(4000));
     ESP_LOGI("DEEP_SLEEP", "Checking if all sensor readings complete.....");
 
-    ESP_LOGI("BTN CHECK", "GPIO %d level is %d", PWR_BTN_PIN, gpio_get_level(PWR_BTN_PIN));
-
     //check if all mutexes are free
     while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0) || check_recent_user_interaction())
     {
@@ -65,7 +63,7 @@ void app_main()
     xTaskCreate(co2_task, "CO2_TASK", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(voc_task, "VOC_TASK", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(display_task, "DISPLAY_TASK", 1024 * 3, NULL, 4, NULL);
-    xTaskCreate(user_button_task, "BUTTON_TASK", 1024, NULL, 6, NULL);
+    xTaskCreate(user_button_task, "BUTTON_TASK", 1024 * 4, NULL, 6, NULL);
    
     //Lowest priority task
     xTaskCreate(deep_sleep_monitor_task, "DEEP_SLEEP_MONITOR", 1024 * 2, NULL, 1, NULL);

@@ -16,7 +16,9 @@
 
 // create an instance of this struct to be used 
 // RTC_DATA_ATTR will make sure this struct is not lost during deep sleep so it holds onto all readings
-RTC_DATA_ATTR sensor_readings_t sensor_data_buffer = {0};
+RTC_DATA_ATTR sensor_readings_t sensor_data_buffer = {
+};
+
 
 /***************
  * @brief CRC function for all sensors
