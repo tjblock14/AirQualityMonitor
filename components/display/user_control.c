@@ -5,6 +5,7 @@
 #include "Userbuttons.h"
 #include "iaq_ui.h"
 #include "ui_screen_inits.h"
+#include "general_sensors.h"
 #include "power_button.h"
 
 // User cannot set threshold greater than this, as this is already dangerous
@@ -13,10 +14,6 @@
 // VOC levels should ideally be below 400 ppb
 #define MAX_VOC_THRESH    400
 #define MIN_VOC_THRESH    200
-
-//Default levels, based on guidlines from World Health Organization
-uint16_t co2_threshold = 1000;
-uint16_t voc_threshold = 400;
 
 /***************************
  * @brief If user button 2 is pressed while the screen is either the CO2 or VOC level,
@@ -46,7 +43,8 @@ void get_setpoint_screen()
             break;
     }
     // Update screen with the next page
-    set_ui_screen_page(next_page);
+    current_page = next_page;
+    set_ui_screen_page(current_page);
 }
 
 /********************************
@@ -55,22 +53,21 @@ void get_setpoint_screen()
  *******************************/
 void increment_gas_setpoint()
 {
-    if(current_page == SET_CO2_THRESH_SCREEN)
+    switch(current_page)
     {
-        if(co2_threshold < MAX_CO2_THRESHOLD)
-        {
-            co2_threshold++;
-        }
+        case SET_CO2_THRESH_SCREEN:
+            sensor_data_buffer.co2_user_threshold++;
+            set_ui_screen_page(current_page);
+            ESP_LOGI("Setpoint", "Incremented value");
+            break;
+        case SET_VOC_THRESH_SCREEN:
+            sensor_data_buffer.voc_user_threshold++;
+            set_ui_screen_page(current_page);
+            ESP_LOGI("Setpoint", "Incremented value");
+            break;
+        default:
+            break;
     }
-    //will have to add in functions for display for both of these
-    else if(current_page == SET_VOC_THRESH_SCREEN)
-    {
-        if(voc_threshold < MAX_VOC_THRESH)
-        {
-            voc_threshold++;
-        }
-    }
-    else{} // Do nothing
 }
 
 /********************************
@@ -79,21 +76,19 @@ void increment_gas_setpoint()
  *******************************/
 void decrement_gas_setpoint()
 {
-    if(current_page == SET_CO2_THRESH_SCREEN)
+    switch(current_page)
     {
-        if(co2_threshold > MIN_CO2_THRESHOLD)
-        {
-            co2_threshold--;
-        }
+        case SET_CO2_THRESH_SCREEN:
+            sensor_data_buffer.co2_user_threshold--;
+            set_ui_screen_page(current_page);
+            break;
+            case SET_VOC_THRESH_SCREEN:
+            sensor_data_buffer.voc_user_threshold--;
+            set_ui_screen_page(current_page);
+            break;
+        default:
+            break;
     }
-    else if(current_page == SET_VOC_THRESH_SCREEN)
-    {
-        if(voc_threshold > MIN_CO2_THRESHOLD)
-        {
-            voc_threshold--;
-        }
-    }
-    else{} // Do nothing
 }
 
 /**********************************
@@ -115,10 +110,10 @@ void handle_button_press(int btn_id)
                 get_setpoint_screen();
                 break;
             case USR_BTN_THREE_PIN:
-               // increment_gas_setpoint();
+                increment_gas_setpoint();
                 break;
             case USR_BTN_FOUR_PIN:
-                //decrement_gas_setpoint();
+                decrement_gas_setpoint();
                 break;
             case PWR_BTN_PIN:
                 //handle_pwr_btn_press();
@@ -136,6 +131,7 @@ void user_button_task(void *parameter)
         int button_pressed_id = 0;
         if(xQueueReceive(user_button_queue, &button_pressed_id, portMAX_DELAY))
         {
+            // will want to check here if the button is held or not
             ESP_LOGI("BTN", "Button press sensed at GPIO %d", button_pressed_id);
             handle_button_press(button_pressed_id);
         }

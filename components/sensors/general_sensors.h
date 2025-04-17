@@ -31,7 +31,6 @@ typedef struct {
 
 void check_general_safety_value();
 void check_user_threshold();
-
 extern sensor_readings_t sensor_data_buffer;
 
 #endif  //SENSOR_TASKS_H

@@ -138,7 +138,7 @@
      ESP_ERROR_CHECK(ledc_channel_config(&pwm_conf));
  
      // Not sure if this is needed, looking into it
-    // ESP_ERROR_CHECK(ledc_fade_func_install(0));
+     ESP_ERROR_CHECK(ledc_fade_func_install(0));
  
  
  }

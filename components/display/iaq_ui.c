@@ -12,10 +12,10 @@
 uint8_t clear_display_cmd[2] = {0x7C, 0x2D};
 
 
-display_screen_pages_t get_next_screen_page(display_screen_pages_t current_page)
+display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_page)
 {
     display_screen_pages_t next_screen = STARTUP_SCREEN;
-    switch(current_page)
+    switch(displayed_page)
     {
         case STARTUP_SCREEN:
             next_screen = TEMPERATURE_HUMIDITY_SCREEN;
@@ -32,6 +32,13 @@ display_screen_pages_t get_next_screen_page(display_screen_pages_t current_page)
         case BATTERY_LEVEL_SCREEN:  // Go back to beginning, Will only enter settings screens if specified
             next_screen = TEMPERATURE_HUMIDITY_SCREEN;
             break;
+        // if on threshold screens, do nothing
+        case SET_CO2_THRESH_SCREEN:
+            next_screen = SET_CO2_THRESH_SCREEN;
+            break;
+        case SET_VOC_THRESH_SCREEN:
+            next_screen = SET_VOC_THRESH_SCREEN;
+            break;
         default:   // If there is some issue, default back to startup screen
             next_screen = STARTUP_SCREEN;
             break;
@@ -41,11 +48,11 @@ display_screen_pages_t get_next_screen_page(display_screen_pages_t current_page)
 
 /******************************
  * @brief This function will be called once on startup, and then every time the button to proceed to the next screen is pressed
- * @param current_page is the page that will be displayed on the screen when this function is called
+ * @param set_page is the page that will be displayed on the screen when this function is called
  */
-void set_ui_screen_page(display_screen_pages_t current_page)
+void set_ui_screen_page(display_screen_pages_t set_page)
 {
-    switch(current_page)
+    switch(set_page)
     {
         case STARTUP_SCREEN:
             startup_screen_init();

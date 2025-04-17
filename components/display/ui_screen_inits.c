@@ -128,20 +128,66 @@ void voc_screen_init()
 
 void battery_screen_init()
 {
+    esp_err_t err = ESP_FAIL;
 
+    // Clear screen and text buffers before writing anything
+    clear_display_screen(); 
+    reset_text_buffers();
 }
 
 void set_co2_thresh_screen_init()
 {
+    esp_err_t err = ESP_FAIL;
 
+    // Clear screen and text buffers before writing anything
+    clear_display_screen(); 
+    reset_text_buffers();
+
+    sprintf(display_text_buf_line1, "CO2 Thresh:");
+    sprintf(display_text_buf_line2, "   %d ppm", sensor_data_buffer.co2_user_threshold);
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(100));
+
+
+    // Move cursor to second row
+    move_cursor_to_second_row();
+
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(100));
+    if(err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error sending CO2 thresh");
+    }
 }
 
 void set_voc_thresh_screen_init()
 {
+    esp_err_t err = ESP_FAIL;
 
+    // Clear screen and text buffers before writing anything
+    clear_display_screen(); 
+    reset_text_buffers();
+
+    sprintf(display_text_buf_line1, "VOC Thresh:");
+    sprintf(display_text_buf_line2, "   %d ppb", sensor_data_buffer.voc_user_threshold);
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(100));
+
+    // Move cursor to second row
+    move_cursor_to_second_row();
+
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(100));
+    if(err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error sending VOC thresh to screen");
+    }
 }
 
 void error_screen_init()
 {
-    
+    esp_err_t err = ESP_FAIL;
+
+    // Clear screen and text buffers before writing anything
+    clear_display_screen(); 
+    reset_text_buffers();
+
+    sprintf(display_text_buf_line1, "VOC Thresh:");
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(100));
 }

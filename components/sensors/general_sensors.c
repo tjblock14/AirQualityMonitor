@@ -20,6 +20,10 @@
 // create an instance of this struct to be used 
 // RTC_DATA_ATTR will make sure this struct is not lost during deep sleep so it holds onto all readings
 RTC_DATA_ATTR sensor_readings_t sensor_data_buffer = {
+    .co2_generally_unsafe_value = 2000,
+    .co2_user_threshold         = 1200,
+    .voc_user_threshold         = 400000,  // change voc values once new sensor comes
+    .voc_generally_unsafe_value = 4000000
 };
 
 
@@ -60,10 +64,6 @@ uint8_t crc_check(const uint8_t* data, uint16_t count)
  ****************************************/
 void check_general_safety_value()
 {
-    //adjust these
-    sensor_data_buffer.co2_generally_unsafe_value = 1500;
-    sensor_data_buffer.voc_generally_unsafe_value = 20000;
-
     if((sensor_data_buffer.average_voc > sensor_data_buffer.voc_generally_unsafe_value)|| (sensor_data_buffer.average_co2 > sensor_data_buffer.co2_generally_unsafe_value))
     {
         gpio_set_level(LARGE_BUZZER_PIN, 1);
@@ -79,13 +79,11 @@ void check_general_safety_value()
  ********************************/
 void check_user_threshold()
 {
-    // will eventually be user set and need to be removed and changes
-    sensor_data_buffer.co2_user_threshold = 800;
-    sensor_data_buffer.voc_user_threshold = 1000;
     // If the CO2 threshold is reached, turn the buzzer on for two seconds
     if((sensor_data_buffer.average_voc > sensor_data_buffer.co2_user_threshold)|| (sensor_data_buffer.average_co2 > sensor_data_buffer.co2_user_threshold))
     {
         ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 4096,0);
+        ESP_LOGI("BZR", "Turned buzzer on");
         vTaskDelay(pdMS_TO_TICKS(2000));
         ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0,0);
     }

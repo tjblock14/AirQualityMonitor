@@ -54,6 +54,8 @@
         "voc_sensor.h": "c",
         "sensirion_gas_index_algorithm.h": "c",
         "wifi.h": "c",
-        "power_button.h": "c"
+        "power_button.h": "c",
+        "esp_timer.h": "c",
+        "stdint.h": "c"
     },
 }

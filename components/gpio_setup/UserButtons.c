@@ -10,7 +10,7 @@
 #define DEBOUNCE_DELAY (30000)   // 30ms in us
 #define AVOID_SLEEP_TIME (120000000)  // 2 minutes in us
 #define TEN_SECOND_HOLD (10000000)   // 10 seconds in us 
-uint32_t last_button_press_time = AVOID_SLEEP_TIME;   // Initializing this to avoid sleep time could help prevent an issue with always avoiding deep sleep for 2 minutes on wakeup
+uint32_t last_button_press_time = AVOID_SLEEP_TIME;  // Make sure we do not avoid sleep if no user interaction since wake
 uint8_t last_button_pressed_id = 0;
 QueueHandle_t user_button_queue = NULL;
 
@@ -60,7 +60,8 @@ bool check_recent_user_interaction()
     // Might want to check which button was pressed too, because if pwr button held for 3 seconds, enter sleep
     // If two minutes have passed since last user interaction, set flag to let deep sleep task enter deep sleep
     // Maybe need to work on this function
-    if(last_button_press_time >= AVOID_SLEEP_TIME)
+    uint32_t current_time = esp_timer_get_time();
+    if((current_time - last_button_press_time) >= AVOID_SLEEP_TIME)
     {
        return false;
     }
@@ -74,8 +75,14 @@ bool check_recent_user_interaction()
  * @brief This function debounces button presses to ensure that when a button is pressed, it is only read once, 
  *        rather than a few times due to the signal ripple when a button is pressed
  ********************/
-bool user_button_debounce()
+bool user_button_debounce(int btn_id)
 {
+    // make sure only checking on button press, not release
+    if(gpio_get_level(btn_id) != 0)
+    {
+        return false;
+    }
+
     uint32_t current_time = esp_timer_get_time();
     if((current_time - last_button_press_time) > DEBOUNCE_DELAY)
     {
@@ -94,15 +101,11 @@ bool user_button_debounce()
  */
 static void IRAM_ATTR user_button_isr_handler(void* id)
 {
-  if(user_button_debounce())
+int button_press_id = (int)id;
+  if(user_button_debounce(id))
   {
     // Add the ID of the button that was pressed to the queue
-    int button_press_id = (int)id;
     xQueueSendFromISR(user_button_queue, &button_press_id, NULL);
-
-    // Set recent button press variable to true and set id of last button press
-   // recent_button_press = true;
-    last_button_pressed_id = button_press_id;
   }  
 }
 
@@ -115,12 +118,13 @@ gpio_config_t lrg_bzr_pin_config = {
     .pin_bit_mask = (1ULL << LARGE_BUZZER_PIN)
 };
 
-    // Baisc configuration for interrupt, pin will be set before the ISR is initialized
+    // Basic configuration for interrupt, pin will be set before the ISR is initialized
     gpio_config_t btn_config = {
         .mode = GPIO_MODE_INPUT,
         .intr_type = GPIO_INTR_NEGEDGE,
+        .pin_bit_mask = GPIO_INPUT_PIN_SEL,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .pull_up_en = GPIO_PULLUP_DISABLE
+        .pull_up_en = GPIO_PULLUP_ENABLE
 };
 
 /******************
@@ -129,14 +133,6 @@ gpio_config_t lrg_bzr_pin_config = {
 void button_init()
 {
 	gpio_config(&lrg_bzr_pin_config);
-	
-    // Baisc configuration for interrupt, pin will be set before the ISR is initialized
-    gpio_config_t btn_config = {
-            .mode = GPIO_MODE_INPUT,
-            .intr_type = GPIO_INTR_NEGEDGE,
-            .pull_down_en = GPIO_PULLDOWN_DISABLE,
-            .pull_up_en = GPIO_PULLUP_DISABLE
-    };
 
     ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1));
 

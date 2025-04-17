@@ -20,8 +20,8 @@ typedef enum {
     ERROR_SCREEN
 } display_screen_pages_t;
 
-display_screen_pages_t get_next_screen_page(display_screen_pages_t current_page);
-void set_ui_screen_page(display_screen_pages_t current_page);
+display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_page);
+void set_ui_screen_page(display_screen_pages_t setpage);
 
 extern display_screen_pages_t current_page;
 
