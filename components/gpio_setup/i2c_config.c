@@ -40,7 +40,7 @@
  i2c_master_dev_handle_t i2c_voc_device_handle;
  i2c_device_config_t i2c_voc_device = {
      .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-     .device_address = 0x59,
+     .device_address = 0x58,
      .scl_speed_hz = I2C_MASTER_FREQ
  };
  

@@ -17,7 +17,7 @@
 #include "Userbuttons.h"
 #include "esp_sleep.h"
 
-#define WAKEUP_TIME 5000000
+#define WAKEUP_TIME 1000000  // one second
 
 display_screen_pages_t current_page = STARTUP_SCREEN;
 
