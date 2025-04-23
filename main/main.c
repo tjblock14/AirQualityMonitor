@@ -37,7 +37,7 @@ void deep_sleep_monitor_task(void *parameter)
     //check if all mutexes are free
     while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0) || check_recent_user_interaction())
     {
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 
     // will sleep for 5 seconds then wakeup for more readings

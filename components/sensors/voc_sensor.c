@@ -74,7 +74,7 @@ void init_voc_sensor()
     }
     else 
     {
-        ESP_LOGW(TAG, "initialized VOC sensor");
+        ESP_LOGI(TAG, "initialized VOC sensor");
     }
 }
 
@@ -83,11 +83,26 @@ void init_voc_sensor()
 void measure_voc_sensor()
 {
     esp_err_t err = ESP_FAIL;
-    err = i2c_master_transmit_receive(i2c_voc_device_handle, voc_measure_cmd, sizeof(voc_measure_cmd), received_data, sizeof(received_data), pdMS_TO_TICKS(20));
+    err = i2c_master_transmit(i2c_voc_device_handle, voc_measure_cmd, sizeof(voc_measure_cmd), pdMS_TO_TICKS(500));
     if(err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error reading measurement from sensor, %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to send measure command: %s", esp_err_to_name(err));
     }
+    else  // measure command successful, now send
+    {
+        vTaskDelay(pdMS_TO_TICKS(20));
+        err = i2c_master_receive(i2c_voc_device_handle, received_data, sizeof(received_data), pdMS_TO_TICKS(500));
+        if(err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Failed to read data: %s", esp_err_to_name(err));
+        }
+    }
+
+    //err = i2c_master_transmit_receive(i2c_voc_device_handle, voc_measure_cmd, sizeof(voc_measure_cmd), received_data, sizeof(received_data), pdMS_TO_TICKS(20));
+   // if(err != ESP_OK)
+    //{
+      //  ESP_LOGE(TAG, "Error reading measurement from sensor, %s", esp_err_to_name(err));
+    //}
 }
 
 
@@ -119,13 +134,14 @@ void voc_task(void *parameter)
         if(xSemaphoreTake(voc_mutex, pdMS_TO_TICKS(1000)) == pdTRUE)
         {
             // Allows all tasks to take their mutex upon startup
-            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(200));
 
-            init_voc_sensor();
-            vTaskDelay(pdMS_TO_TICKS(50));
-            // On fresh power up, the sensor needs to take 15 consecutive readings before it gets a valid value
+            
+            // On fresh power up, the sensor needs to initialize, then take 15 consecutive readings before it gets a valid value
             if(reason_for_wakeup == ESP_SLEEP_WAKEUP_UNDEFINED)
             {
+                init_voc_sensor();
+                vTaskDelay(pdMS_TO_TICKS(50));
                 for(uint8_t i = 0; i < 15; i++)
                 {
                     measure_voc_sensor();
@@ -144,6 +160,8 @@ void voc_task(void *parameter)
                     sensor_data_buffer.co2_concentration[sensor_data_buffer.co2_reading_index] = readable_voc;
                     sensor_data_buffer.co2_reading_index++;
                 }
+
+                ESP_LOGI(TAG, "%d ppb", readable_voc);
             }
             else
             {
@@ -152,6 +170,6 @@ void voc_task(void *parameter)
         }
         xSemaphoreGive(voc_mutex);
 
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

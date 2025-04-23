@@ -111,6 +111,6 @@ void temp_humidity_task(void *parameter)
         }
         xSemaphoreGive(temp_humid_mutex);
          // only take one measurement before entering deep sleep
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }

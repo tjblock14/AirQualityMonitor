@@ -94,7 +94,8 @@ void co2_task(void *parameter)
         if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(100)) == pdTRUE) // Ensure that nothing else interacts with the CO2 data while taking a measurement
         {
             // Give other sensor tasks the chance to take their mutex as well, ensures it only goes into deep sleep when needed, and for sensor to wakeup
-            vTaskDelay(pdMS_TO_TICKS(100));
+            // and time for the CO2 sensor to be ready to receive command
+            vTaskDelay(pdMS_TO_TICKS(500));
 
             // Wakeup CO2 sensor every time the device itsel awakens, this sensor does not respond to this command, but it is necessary
             i2c_master_transmit(i2c_co2_device_handle, wakeup_co2_cmd, sizeof(wakeup_co2_cmd), pdMS_TO_TICKS(100));
@@ -102,7 +103,7 @@ void co2_task(void *parameter)
             err = i2c_master_transmit(i2c_co2_device_handle, co2_start_cmd, sizeof(co2_start_cmd), pdMS_TO_TICKS(100));
             if(err != ESP_OK)
             {
-                ESP_LOGE(TAG, "Error writing measure command to sensor with error: 0x%03x", err);
+                ESP_LOGE(TAG, "Error writing measure command to sensor with error: %s", esp_err_to_name(err));
             }
 
             // after sensors receive initial command, give time to take measurement
@@ -126,7 +127,7 @@ void co2_task(void *parameter)
             }
         }
         xSemaphoreGive(co2_mutex);
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
         
 }
