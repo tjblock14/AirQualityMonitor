@@ -5,6 +5,7 @@
 #include "i2c_config.h"
 #include "general_sensors.h"
 #include "temp_sensor.h"
+#include "Userbuttons.h"
 #include "driver/i2c.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -138,11 +139,15 @@ void voc_task(void *parameter)
 
             
             // On fresh power up, the sensor needs to initialize, then take 15 consecutive readings before it gets a valid value
-            if(reason_for_wakeup == ESP_SLEEP_WAKEUP_UNDEFINED)
+            // Also check for recent button press because if button was pressed on startup, device will not enter sleep immediately
+            // so we need to ensure there was no press as well
+            if((reason_for_wakeup == ESP_SLEEP_WAKEUP_UNDEFINED) && !check_recent_user_interaction())
             {
                 init_voc_sensor();
                 vTaskDelay(pdMS_TO_TICKS(50));
-                for(uint8_t i = 0; i < 15; i++)
+
+                // take 20 readings on fresh startup to be safe and ensure readings area valid when we start storing data
+                for(uint8_t i = 0; i < 20; i++)
                 {
                     measure_voc_sensor();
                     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -157,8 +162,8 @@ void voc_task(void *parameter)
                 // add the read voc value to the array, and increment to next index for next reading
                 if(sensor_data_buffer.co2_reading_index < MAX_SENSOR_READINGS)
                 {
-                    sensor_data_buffer.co2_concentration[sensor_data_buffer.co2_reading_index] = readable_voc;
-                    sensor_data_buffer.co2_reading_index++;
+                    sensor_data_buffer.voc_measurement[sensor_data_buffer.voc_reading_index] = readable_voc;
+                    sensor_data_buffer.voc_reading_index++;
                 }
 
                 ESP_LOGI(TAG, "%d ppb", readable_voc);

@@ -22,8 +22,8 @@
 RTC_DATA_ATTR sensor_readings_t sensor_data_buffer = {
     .co2_generally_unsafe_value = 2000,
     .co2_user_threshold         = 1200,
-    .voc_user_threshold         = 400000,  // change voc values once new sensor comes
-    .voc_generally_unsafe_value = 4000000
+    .voc_user_threshold         = 300, 
+    .voc_generally_unsafe_value = 660
 };
 
 

@@ -118,7 +118,7 @@ void voc_screen_init()
     clear_display_screen(); 
     reset_text_buffers();
 
-    sprintf(display_text_buf_line1, "VOC Index:");
+    sprintf(display_text_buf_line1, "VOC Level:");
     sprintf(display_text_buf_line2, "%d ppb", sensor_data_buffer.average_voc);
     err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(100));
     if(err != ESP_OK)

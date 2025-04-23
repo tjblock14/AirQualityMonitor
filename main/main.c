@@ -17,9 +17,10 @@
 #include "Userbuttons.h"
 #include "esp_sleep.h"
 
-#define WAKEUP_TIME 1000000  // one second
+#define WAKEUP_TIME 5000000  // one second
 
-display_screen_pages_t current_page = STARTUP_SCREEN;
+// Needs to do something with this here, will not work because then on ever wake from deep sleep, current page is startup
+RTC_DATA_ATTR display_screen_pages_t current_page = STARTUP_SCREEN;
 
 /*********************************
  * 
@@ -37,7 +38,7 @@ void deep_sleep_monitor_task(void *parameter)
     //check if all mutexes are free
     while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0) || check_recent_user_interaction())
     {
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 
     // will sleep for 5 seconds then wakeup for more readings

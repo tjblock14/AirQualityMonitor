@@ -8,6 +8,7 @@
 #include "ui_screen_inits.h"
 #include "Userbuttons.h"
 #include "user_control.h"
+#include "esp_sleep.h"
 
 uint8_t clear_display_cmd[2] = {0x7C, 0x2D};
 
@@ -87,8 +88,12 @@ void set_ui_screen_page(display_screen_pages_t set_page)
  *******************/
 void display_task(void *parameter)
 {
-    // Probably permanently remove since we go deep sleep but idk yet
-    // i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(100));
+   // On fresh startup, set take initial screen measurements
+   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+   if(wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) // undefined if woken not from deep sleep
+   {
+    set_ui_screen_page(STARTUP_SCREEN);
+   }
 
 
     while(1)
@@ -100,7 +105,10 @@ void display_task(void *parameter)
             if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(20)) == pdTRUE)
             {
                 sensor_data_buffer.average_co2 = get_average_sensor_data(sensor_data_buffer.co2_concentration, &sensor_data_buffer.co2_reading_index, "CO2");
-                set_ui_screen_page(CO2_SCREEN);
+                if(current_page == CO2_SCREEN) // if current page displayed is the CO2 screen, update data on screem
+                {
+                    set_ui_screen_page(current_page);
+                }
                 xSemaphoreGive(co2_mutex);
             }
 
@@ -113,6 +121,10 @@ void display_task(void *parameter)
             {
                 sensor_data_buffer.average_temp = get_average_sensor_data(sensor_data_buffer.temperature, &sensor_data_buffer.temp_reading_index, "TEMP");
                 sensor_data_buffer.average_humidity = get_average_sensor_data(sensor_data_buffer.humidity, &sensor_data_buffer.humid_reading_index, "HUMID");
+                if(current_page == TEMPERATURE_HUMIDITY_SCREEN) // if current page displayed is the temp/humidity screen, update data on screen
+                {
+                    set_ui_screen_page(current_page);
+                }
                 xSemaphoreGive(temp_humid_mutex);
             }
         }
@@ -122,6 +134,10 @@ void display_task(void *parameter)
             if(xSemaphoreTake(voc_mutex, pdMS_TO_TICKS(50)) == pdTRUE)
             {
                 sensor_data_buffer.average_voc = get_average_sensor_data(sensor_data_buffer.voc_measurement, &sensor_data_buffer.voc_reading_index, "VOC");
+                if(current_page == VOC_SCREEN) // if current page displayed is the VOC screen, update data on screen
+                {
+                    set_ui_screen_page(current_page);
+                }
                 xSemaphoreGive(voc_mutex);
             }
         }
