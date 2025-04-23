@@ -15,9 +15,9 @@
 
 static const char *TAG = "VOC";
 SemaphoreHandle_t voc_mutex = NULL;
-uint8_t received_data[6];
 uint8_t init_voc_sensor_cmd[2] = {0x20, 0x03};
 uint8_t voc_measure_cmd[2]     = {0x20, 0x08};
+uint8_t received_data[6] = {0};
 
 /***************
  * @brief This function handles the conversion of the raw data to an indexed value from the sensirion funciton.
@@ -67,10 +67,14 @@ void get_full_voc_command()
 void init_voc_sensor()
 {
     esp_err_t err = ESP_FAIL;
-    err = i2c_master_transmit(i2c_voc_device_handle, init_voc_sensor_cmd, sizeof(init_voc_sensor_cmd), pdMS_TO_TICKS(50));
+    err = i2c_master_transmit(i2c_voc_device_handle, init_voc_sensor_cmd, sizeof(init_voc_sensor_cmd), pdMS_TO_TICKS(200));
     if(err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error sending init command to sensor");
+        ESP_LOGE(TAG, "Error sending init command to sensor, %s", esp_err_to_name(err));
+    }
+    else 
+    {
+        ESP_LOGW(TAG, "initialized VOC sensor");
     }
 }
 
@@ -79,10 +83,10 @@ void init_voc_sensor()
 void measure_voc_sensor()
 {
     esp_err_t err = ESP_FAIL;
-    err = i2c_master_transmit_receive(i2c_voc_device_handle, voc_measure_cmd, sizeof(voc_measure_cmd), received_data, sizeof(received_data), pdMS_TO_TICKS(100));
+    err = i2c_master_transmit_receive(i2c_voc_device_handle, voc_measure_cmd, sizeof(voc_measure_cmd), received_data, sizeof(received_data), pdMS_TO_TICKS(20));
     if(err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error reading measurement from sensor");
+        ESP_LOGE(TAG, "Error reading measurement from sensor, %s", esp_err_to_name(err));
     }
 }
 
@@ -97,18 +101,20 @@ void voc_task(void *parameter)
     }
 
     esp_sleep_wakeup_cause_t reason_for_wakeup = esp_sleep_get_wakeup_cause();
-    if(reason_for_wakeup == ESP_SLEEP_WAKEUP_UNDEFINED)  // Undefined means wakeup reason was not from exiting deep sleep (reboot. etc.)
-    {
+   // if(reason_for_wakeup == ESP_SLEEP_WAKEUP_UNDEFINED)  // Undefined means wakeup reason was not from exiting deep sleep (reboot. etc.)
+   // {
         
-    }
-    else  // wake-up from deep sleep
-    {
+   // }
+   // else  // wake-up from deep sleep
+   // {
 
-    }
+   // }
     
     while(1)
     {
         uint16_t readable_voc = 0;
+        // Set data array to zero upon new read
+        memset(received_data, 0, sizeof(received_data));
         esp_err_t err = ESP_FAIL;
         if(xSemaphoreTake(voc_mutex, pdMS_TO_TICKS(1000)) == pdTRUE)
         {
@@ -116,6 +122,7 @@ void voc_task(void *parameter)
             vTaskDelay(pdMS_TO_TICKS(100));
 
             init_voc_sensor();
+            vTaskDelay(pdMS_TO_TICKS(50));
             // On fresh power up, the sensor needs to take 15 consecutive readings before it gets a valid value
             if(reason_for_wakeup == ESP_SLEEP_WAKEUP_UNDEFINED)
             {
@@ -128,7 +135,7 @@ void voc_task(void *parameter)
 
             measure_voc_sensor();
             // Make sure the crc check for data equals the received crc from sensor
-            if(crc_check(received_data[3], 2) == received_data[5])
+            if(crc_check(&received_data[3], 2) == received_data[5])
             {
                 readable_voc = (received_data[3] << 8) | received_data[4];
                 // add the read voc value to the array, and increment to next index for next reading

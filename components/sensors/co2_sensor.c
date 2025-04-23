@@ -126,7 +126,7 @@ void co2_task(void *parameter)
             }
         }
         xSemaphoreGive(co2_mutex);
-        vTaskDelay(pdMS_TO_TICKS(2000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
         
 }

@@ -31,7 +31,7 @@ display_screen_pages_t current_page = STARTUP_SCREEN;
 void deep_sleep_monitor_task(void *parameter)
 {
     // give time for other tasks to start
-    vTaskDelay(pdMS_TO_TICKS(4000));
+    vTaskDelay(pdMS_TO_TICKS(1000));
     ESP_LOGI("DEEP_SLEEP", "Checking if all sensor readings complete.....");
 
     //check if all mutexes are free
