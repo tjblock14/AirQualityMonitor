@@ -8,5 +8,4 @@ idf_component_register(SRCS "${srcs}" INCLUDE_DIRS "."
                         REQUIRES 
                             driver
                             gpio_setup
-                            display
-                            sensirion_files_voc)
+                            display)
