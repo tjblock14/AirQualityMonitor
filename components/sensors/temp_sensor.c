@@ -105,6 +105,7 @@ void temp_humidity_task(void *parameter)
             }
             else
             {
+                ESP_LOGE(TAG, "CRC Mistmatch");
                 continue;
             }
         }

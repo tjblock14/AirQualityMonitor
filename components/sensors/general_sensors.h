@@ -14,7 +14,7 @@ typedef struct {
     uint16_t temperature[MAX_SENSOR_READINGS];
     uint16_t humidity[MAX_SENSOR_READINGS];
     uint16_t co2_concentration[MAX_SENSOR_READINGS];
-    int32_t voc_measurement[MAX_SENSOR_READINGS];
+    uint16_t voc_measurement[MAX_SENSOR_READINGS];
     uint8_t temp_reading_index;
     uint8_t humid_reading_index;
     uint8_t co2_reading_index;
@@ -22,9 +22,15 @@ typedef struct {
     uint16_t average_co2;
     uint16_t average_temp;
     uint16_t average_humidity;
-    int32_t average_voc;
+    uint16_t  average_voc;
+    uint16_t co2_user_threshold;
+    uint16_t co2_generally_unsafe_value;
+    uint16_t voc_user_threshold;
+    uint16_t voc_generally_unsafe_value;
 } sensor_readings_t;
 
+void check_general_safety_value();
+void check_user_threshold();
 extern sensor_readings_t sensor_data_buffer;
 
 #endif  //SENSOR_TASKS_H

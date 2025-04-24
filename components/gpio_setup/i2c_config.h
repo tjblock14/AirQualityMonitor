@@ -20,7 +20,7 @@ extern i2c_master_dev_handle_t i2c_temp_device_handle;
 extern i2c_device_config_t     i2c_temp_device;
 
 extern i2c_master_dev_handle_t i2c_voc_device_handle;
-extern i2c_device_config_t i2c_voc_device;
+extern i2c_device_config_t     i2c_voc_device;
 
 extern i2c_master_dev_handle_t i2c_display_device_handle;
 extern i2c_device_config_t     i2c_display_device;

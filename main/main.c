@@ -17,9 +17,10 @@
 #include "Userbuttons.h"
 #include "esp_sleep.h"
 
-#define WAKEUP_TIME 5000000
+#define WAKEUP_TIME 5000000  // one second
 
-display_screen_pages_t current_page = STARTUP_SCREEN;
+// Needs to do something with this here, will not work because then on ever wake from deep sleep, current page is startup
+RTC_DATA_ATTR display_screen_pages_t current_page = STARTUP_SCREEN;
 
 /*********************************
  * 
@@ -31,11 +32,11 @@ display_screen_pages_t current_page = STARTUP_SCREEN;
 void deep_sleep_monitor_task(void *parameter)
 {
     // give time for other tasks to start
-    vTaskDelay(pdMS_TO_TICKS(4000));
+    vTaskDelay(pdMS_TO_TICKS(1000));
     ESP_LOGI("DEEP_SLEEP", "Checking if all sensor readings complete.....");
 
     //check if all mutexes are free
-    while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0))
+    while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0) || check_recent_user_interaction())
     {
         vTaskDelay(pdMS_TO_TICKS(100));
     }
@@ -63,7 +64,7 @@ void app_main()
     xTaskCreate(co2_task, "CO2_TASK", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(voc_task, "VOC_TASK", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(display_task, "DISPLAY_TASK", 1024 * 3, NULL, 4, NULL);
-    xTaskCreate(user_button_task, "BUTTON_TASK", 1024, NULL, 6, NULL);
+    xTaskCreate(user_button_task, "BUTTON_TASK", 1024 * 4, NULL, 6, NULL);
    
     //Lowest priority task
     xTaskCreate(deep_sleep_monitor_task, "DEEP_SLEEP_MONITOR", 1024 * 2, NULL, 1, NULL);

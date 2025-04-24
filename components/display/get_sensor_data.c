@@ -44,16 +44,3 @@ uint16_t get_average_sensor_data(uint16_t *sensor_data, uint8_t *sensor_index, c
 
     return average_value_for_display;
 }
-
-
-
-void check_co2_thresh()
-{
-    // If the CO2 threshold is reached, turn the buzzer on for two seconds
-    if(sensor_data_buffer.average_co2 > 900)
-    {
-        ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 4096,0);
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0,0);
-    }
-}
