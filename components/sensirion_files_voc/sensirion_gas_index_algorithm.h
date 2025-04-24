@@ -192,7 +192,6 @@ void GasIndexAlgorithm_reset(GasIndexAlgorithmParams* params);
  * GasIndexAlgorithm_set_states() to resume operation after a short
  * interruption, skipping initial learning phase.
  * NOTE: This feature can only be used for VOC algorithm type and after at least
- * 3 hours of continuous operation.
  * @param params    Pointer to the GasIndexAlgorithmParams struct
  * @param state0    State0 to be stored
  * @param state1    State1 to be stored
