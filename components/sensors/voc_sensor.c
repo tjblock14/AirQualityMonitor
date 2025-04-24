@@ -20,50 +20,6 @@ uint8_t init_voc_sensor_cmd[2] = {0x20, 0x03};
 uint8_t voc_measure_cmd[2]     = {0x20, 0x08};
 uint8_t received_data[6] = {0};
 
-/***************
- * @brief This function handles the conversion of the raw data to an indexed value from the sensirion funciton.
- *        It then stores that index in the array that holds onto 10 subsequent readings before averaging and increments the reading index of the sensor
- * @param raw_data is the raw data read from the sensor
- */
-void get_voc_index_and_store(uint8_t raw_data[3])
-{
-
-
-   // if(sensor_data_buffer.voc_reading_index < MAX_SENSOR_READINGS)
-    //{
-      //  sensor_data_buffer.voc_measurement[sensor_data_buffer.voc_reading_index] = voc_index_value;
-        //sensor_data_buffer.voc_reading_index++;
-
-        //ESP_LOGE(TAG, "VOC Index is: %ld", voc_index_value);
-    //}
-}
-
-/*********************************
- * @brief This function is called prior to sending the command to the VOC sensor to take a reading. This function
- *        receives the raw data string from the temperature and humidity sensor in a queue, and then organizes the 
- *        bytes of raw data into the command to be sent to the VOC sensor so that it takes the measured temperature 
- *        humidity data into consideration
-void get_full_voc_command()
-{
-    // Reset last six bytes of command
-    memset(&voc_read_command[2], 0, 6);
-    // Reset array to zero
-    memset(&received_data, 0, sizeof(received_data));
-
-    while(xQueueReceive(temp_humid_voc_queue, &received_data, pdMS_TO_TICKS(50)) != pdPASS)
-    {
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-
-    // Append the received data to the VOC command string
-     VOC Sensor needs the three humidity bytes first, and three temperature bytes next
-    *  but the temperature sensor returns it in the opposite direction we flip them with the mem copies below
-    *
-    memcpy(&voc_read_command[2], &received_data[3], 3);  // Puts the three humidity bytes in bytes 2,3,4 of command
-    memcpy(&voc_read_command[5], &received_data[0], 3);  // Puts temperature bytes in byte 5,6,7 of command
-}
-***********************/
-
 // Simple function for the init command of the sensor since we need to use this repeatedly on first startup
 void init_voc_sensor()
 {
@@ -98,12 +54,6 @@ void measure_voc_sensor()
             ESP_LOGE(TAG, "Failed to read data: %s", esp_err_to_name(err));
         }
     }
-
-    //err = i2c_master_transmit_receive(i2c_voc_device_handle, voc_measure_cmd, sizeof(voc_measure_cmd), received_data, sizeof(received_data), pdMS_TO_TICKS(20));
-   // if(err != ESP_OK)
-    //{
-      //  ESP_LOGE(TAG, "Error reading measurement from sensor, %s", esp_err_to_name(err));
-    //}
 }
 
 
@@ -117,14 +67,6 @@ void voc_task(void *parameter)
     }
 
     esp_sleep_wakeup_cause_t reason_for_wakeup = esp_sleep_get_wakeup_cause();
-   // if(reason_for_wakeup == ESP_SLEEP_WAKEUP_UNDEFINED)  // Undefined means wakeup reason was not from exiting deep sleep (reboot. etc.)
-   // {
-        
-   // }
-   // else  // wake-up from deep sleep
-   // {
-
-   // }
     
     while(1)
     {

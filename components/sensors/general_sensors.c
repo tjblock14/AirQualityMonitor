@@ -22,7 +22,7 @@
 RTC_DATA_ATTR sensor_readings_t sensor_data_buffer = {
     .co2_generally_unsafe_value = 2000,
     .co2_user_threshold         = 1200,
-    .voc_user_threshold         = 300, 
+    .voc_user_threshold         = 0, //300, 
     .voc_generally_unsafe_value = 660
 };
 
@@ -79,12 +79,17 @@ void check_general_safety_value()
  ********************************/
 void check_user_threshold()
 {
+    esp_err_t err = ESP_FAIL;
     // If the CO2 threshold is reached, turn the buzzer on for two seconds
-    if((sensor_data_buffer.average_voc > sensor_data_buffer.co2_user_threshold)|| (sensor_data_buffer.average_co2 > sensor_data_buffer.co2_user_threshold))
+    if((sensor_data_buffer.average_voc > sensor_data_buffer.voc_user_threshold) || (sensor_data_buffer.average_co2 > sensor_data_buffer.co2_user_threshold))
     {
-        ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 4096,0);
+        err = ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 4096,0);
+        if(err != ESP_OK)
+        {
+            ESP_LOGE("BZR", "Error turning buzzer on: %s", esp_err_to_name(err));
+        }
         ESP_LOGI("BZR", "Turned buzzer on");
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0,0);
+        // vTaskDelay(pdMS_TO_TICKS(2000));
+        // ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0,0);
     }
 }
