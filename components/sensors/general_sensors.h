@@ -9,6 +9,7 @@
 #define MAX_SENSOR_READINGS 10
 
 uint8_t crc_check(const uint8_t* data, uint16_t count);
+bool is_buzzer_on();
 
 typedef struct {
     uint16_t temperature[MAX_SENSOR_READINGS];

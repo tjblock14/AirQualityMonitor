@@ -8,6 +8,7 @@
 #include "esp_log.h"
 #include "esp_err.h"
 #include "Userbuttons.h"
+#include "power_button.h"
 #include "general_sensors.h"
 #include "i2c_config.h"
 #include "esp_check.h"
@@ -16,6 +17,8 @@
 
 #define CRC_INIT          0xFF
 #define CRC_POLYNOMIAL    0x31
+
+bool buzzer_status = false;
 
 // create an instance of this struct to be used 
 // RTC_DATA_ATTR will make sure this struct is not lost during deep sleep so it holds onto all readings
@@ -52,12 +55,22 @@ uint8_t crc_check(const uint8_t* data, uint16_t count)
     return crc;
 }
 
-/***********************************************************
- * 
- * *****************************************
- * 
- * *************************************************************/
-// Will also want to add in a flag incase the user pressed button to manually turn off alarm
+bool is_buzzer_on()
+{
+    return buzzer_status;
+}
+
+// Function to turn the user threshold buzzer off since it can be used in two places
+void turn_user_buzzer_off()
+{
+    esp_err_t err = ESP_FAIL;
+    err = ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0,0);
+    if(err != ESP_OK)
+    {
+        ESP_LOGE("BZR", "Error turning buzzer off: %s", esp_err_to_name(err));
+    }
+    buzzer_status = false;
+}
 
 /****************************************
  * @brief compare measured average value against the generally unsafe values, if it has been exceeded, turn on large buzzer
@@ -67,29 +80,39 @@ void check_general_safety_value()
     if((sensor_data_buffer.average_voc > sensor_data_buffer.voc_generally_unsafe_value)|| (sensor_data_buffer.average_co2 > sensor_data_buffer.co2_generally_unsafe_value))
     {
         gpio_set_level(LARGE_BUZZER_PIN, 1);
+        buzzer_status = true;
     }
     else
     {
         gpio_set_level(LARGE_BUZZER_PIN, 0);
+
     }
 }
 
 /*********************************
- * @brief If the user-set thresholds have been exceeded, turn on the quieter of the two buzzers
+ * @brief If either the CO2 or VOC user-set threshold has been reached or exceeded, and the buzzer has not yet been acknowledged by the user, turn the buzzer on
  ********************************/
 void check_user_threshold()
 {
     esp_err_t err = ESP_FAIL;
-    // If the CO2 threshold is reached, turn the buzzer on for two seconds
-    if((sensor_data_buffer.average_voc > sensor_data_buffer.voc_user_threshold) || (sensor_data_buffer.average_co2 > sensor_data_buffer.co2_user_threshold))
+    // Compare measured values to thresholds, and if it has been exceeded, only proceed if the buzzer has not yet been acknowledged
+    if(((sensor_data_buffer.average_voc > sensor_data_buffer.voc_user_threshold) || (sensor_data_buffer.average_co2 > sensor_data_buffer.co2_user_threshold)) && !has_buzzer_been_acked())
     {
-        err = ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 4096,0);
+        err = ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 4096,0);  // 50% duty cycle
         if(err != ESP_OK)
         {
             ESP_LOGE("BZR", "Error turning buzzer on: %s", esp_err_to_name(err));
         }
-        ESP_LOGI("BZR", "Turned buzzer on");
-        // vTaskDelay(pdMS_TO_TICKS(2000));
-        // ledc_set_duty_and_update(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0,0);
+        buzzer_status = true;
+    }
+    // else if the buzzers have returned below their threshold, and the buzzer is still acked, reset  the ack
+    else if(!((sensor_data_buffer.average_voc > sensor_data_buffer.voc_user_threshold) || (sensor_data_buffer.average_co2 > sensor_data_buffer.co2_user_threshold)) && has_buzzer_been_acked())
+    { 
+        reset_buzzer_ack();
+        turn_user_buzzer_off();
+    }
+    else // Levels are below the threshold, and the ack is low
+    {
+        turn_user_buzzer_off();
     }
 }

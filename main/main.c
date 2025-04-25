@@ -36,7 +36,7 @@ void deep_sleep_monitor_task(void *parameter)
     ESP_LOGI("DEEP_SLEEP", "Checking if all sensor readings complete.....");
 
     //check if all mutexes are free
-    while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0) || check_recent_user_interaction())
+    while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0) || check_recent_user_interaction() || is_buzzer_on())
     {
         vTaskDelay(pdMS_TO_TICKS(100));
     }

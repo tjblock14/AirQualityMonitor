@@ -116,7 +116,7 @@ void handle_button_press(int btn_id)
                 decrement_gas_setpoint();
                 break;
             case PWR_BTN_PIN:
-                //handle_pwr_btn_press();
+                handle_pwr_btn_press();
                 break;
             default:
                 break;
