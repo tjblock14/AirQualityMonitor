@@ -98,11 +98,13 @@ void check_general_safety_value()
     {
         // turn buzzer off since levels returned below threshold, and then unack it so that next time the threshold is reached, it will not already be acked
         gpio_set_level(LARGE_BUZZER_PIN, 0);
+        safety_buzzer_status = false;
         reset_safety_buzzer_ack();
     }
     else // Levels are still above threshold, but buzzer has been acked
     {
         gpio_set_level(LARGE_BUZZER_PIN, 0);
+        safety_buzzer_status = false;
 
     }
 }
