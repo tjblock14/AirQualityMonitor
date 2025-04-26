@@ -9,7 +9,6 @@
 #include "driver/i2c.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
-#include "sensirion_gas_index_algorithm.h"
 #include "esp_sleep.h"
 
 #define VOC_SENS_ADDR      0x58
