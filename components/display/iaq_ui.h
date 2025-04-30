@@ -13,7 +13,6 @@ typedef enum {
     TEMPERATURE_HUMIDITY_SCREEN,
     CO2_SCREEN,
     VOC_SCREEN,
-    BATTERY_LEVEL_SCREEN,
 
     // Settings Screens
     SET_CO2_THRESH_SCREEN,

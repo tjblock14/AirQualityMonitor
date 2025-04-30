@@ -30,9 +30,6 @@ display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_pag
             next_screen = VOC_SCREEN;
             break;
         case VOC_SCREEN:
-            next_screen = BATTERY_LEVEL_SCREEN;
-            break;
-        case BATTERY_LEVEL_SCREEN:  // Go back to beginning, Will only enter settings screens if specified
             next_screen = TEMPERATURE_HUMIDITY_SCREEN;
             break;
         // if on threshold screens, do nothing
@@ -68,9 +65,6 @@ void set_ui_screen_page(display_screen_pages_t set_page)
             break;
         case VOC_SCREEN:
             voc_screen_init();
-            break;
-        case BATTERY_LEVEL_SCREEN:
-            battery_screen_init();
             break;
         case SET_CO2_THRESH_SCREEN:
             set_co2_thresh_screen_init();
@@ -117,6 +111,13 @@ void display_task(void *parameter)
                 sensor_data_buffer.average_co2 = get_average_sensor_data(sensor_data_buffer.co2_concentration, &sensor_data_buffer.co2_reading_index, "CO2");
                 if(current_page == CO2_SCREEN) // if current page displayed is the CO2 screen, update data on screem
                 {
+                    set_ui_screen_page(current_page);
+                }
+
+                // On first startup, when data ready, display new page
+                if(!read_inital_data_on_startup)
+                {
+                    current_page = CO2_SCREEN;
                     set_ui_screen_page(current_page);
                 }
                 // CO2 sensor takes longest to get average data

@@ -10,7 +10,7 @@
 #define DEBOUNCE_DELAY (pdMS_TO_TICKS(20))   //10 ms delay
 #define AVOID_SLEEP_TIME (120000000)  // 2 minutes in us
 #define TEN_SECOND_HOLD (10000000)   // 10 seconds in us 
-uint32_t last_button_press_time = AVOID_SLEEP_TIME;  // Make sure we do not avoid sleep if no user interaction since wake
+RTC_DATA_ATTR uint32_t last_button_press_time = 0;  // Make sure we do not avoid sleep if no user interaction since wake
 uint8_t last_button_pressed_id = 0;
 QueueHandle_t user_button_queue = NULL;
 

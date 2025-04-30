@@ -91,16 +91,16 @@ void co2_task(void *parameter)
         esp_err_t err = ESP_FAIL;
         uint16_t co2_concentration = 0;
 
-        if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(100)) == pdTRUE) // Ensure that nothing else interacts with the CO2 data while taking a measurement
+        if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(200)) == pdTRUE) // Ensure that nothing else interacts with the CO2 data while taking a measurement
         {
             // Give other sensor tasks the chance to take their mutex as well, ensures it only goes into deep sleep when needed, and for sensor to wakeup
             // and time for the CO2 sensor to be ready to receive command
             vTaskDelay(pdMS_TO_TICKS(500));
 
             // Wakeup CO2 sensor every time the device itsel awakens, this sensor does not respond to this command, but it is necessary
-            i2c_master_transmit(i2c_co2_device_handle, wakeup_co2_cmd, sizeof(wakeup_co2_cmd), pdMS_TO_TICKS(100));
+            i2c_master_transmit(i2c_co2_device_handle, wakeup_co2_cmd, sizeof(wakeup_co2_cmd), pdMS_TO_TICKS(300));
 
-            err = i2c_master_transmit(i2c_co2_device_handle, co2_start_cmd, sizeof(co2_start_cmd), pdMS_TO_TICKS(100));
+            err = i2c_master_transmit(i2c_co2_device_handle, co2_start_cmd, sizeof(co2_start_cmd), pdMS_TO_TICKS(300));
             if(err != ESP_OK)
             {
                 ESP_LOGE(TAG, "Error writing measure command to sensor with error: %s", esp_err_to_name(err));
@@ -116,7 +116,7 @@ void co2_task(void *parameter)
             
             // Release the semaphore, power down sensor, and delay so that the deep sleep task has time to check that the semaphore was released
             vTaskDelay(pdMS_TO_TICKS(50));
-            err = i2c_master_transmit(i2c_co2_device_handle, power_down_co2_cmd, sizeof(power_down_co2_cmd), pdMS_TO_TICKS(100));
+            err = i2c_master_transmit(i2c_co2_device_handle, power_down_co2_cmd, sizeof(power_down_co2_cmd), pdMS_TO_TICKS(300));
             if(err != ESP_OK)
             {
                 ESP_LOGE(TAG, "Error powering down CO2 Sensor before Deep Sleep");
