@@ -131,9 +131,12 @@ void user_button_task(void *parameter)
         int button_pressed_id = 0;
         if(xQueueReceive(user_button_queue, &button_pressed_id, portMAX_DELAY))
         {
-            // will want to check here if the button is held or not
-            ESP_LOGI("BTN", "Button press sensed at GPIO %d", button_pressed_id);
-            handle_button_press(button_pressed_id);
+            if(user_button_debounce(button_pressed_id))  // Debounce button
+            {
+                // will want to check here if the button is held or not
+                ESP_LOGI("BTN", "Button press sensed at GPIO %d", button_pressed_id);
+                handle_button_press(button_pressed_id);
+            }
         }
     }
 }

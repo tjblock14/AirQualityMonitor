@@ -7,7 +7,7 @@
 #include "esp_log.h"
 
 #define GPIO_INPUT_PIN_SEL  ((1ULL << USR_BTN_ONE_PIN) | (1ULL << USR_BTN_TWO_PIN) | (1ULL << USR_BTN_THREE_PIN) | (1ULL << USR_BTN_FOUR_PIN) | (1ULL << PWR_BTN_PIN))
-#define DEBOUNCE_DELAY (30000)   // 30ms in us
+#define DEBOUNCE_DELAY (pdMS_TO_TICKS(20))   //10 ms delay
 #define AVOID_SLEEP_TIME (120000000)  // 2 minutes in us
 #define TEN_SECOND_HOLD (10000000)   // 10 seconds in us 
 uint32_t last_button_press_time = AVOID_SLEEP_TIME;  // Make sure we do not avoid sleep if no user interaction since wake
@@ -77,22 +77,32 @@ bool check_recent_user_interaction()
  ********************/
 bool user_button_debounce(int btn_id)
 {
-    // make sure only checking on button press, not release
-    if(gpio_get_level(btn_id) != 0)
+    // Disable the interrupt so only the first press is detected as a press
+    gpio_intr_disable(btn_id);
+
+    bool button_status[8] = {0};
+
+    // Check the button status every 10ms for 80ms total
+    for(uint8_t i = 0; i < 8; i++)
     {
-        return false;
+        button_status[i] = gpio_get_level(btn_id);
+        vTaskDelay(DEBOUNCE_DELAY); // delay 10ms then re-read
     }
 
-    uint32_t current_time = esp_timer_get_time();
-    if((current_time - last_button_press_time) > DEBOUNCE_DELAY)
+    // If there are fours consecutive lows in this check, then the button was pressed
+    for(uint8_t j = 0; j < 4; j++)
     {
-        last_button_press_time = current_time;
-        return true; // Button successfully debounced, button was pressed
+        if (!button_status[j] && !button_status[j+1] && !button_status[j+2] && !button_status[j+3])
+        {
+            // Found 4 consecutive lows, take down last button press time, re-enable interrupt, and return true for button press
+            last_button_press_time = esp_timer_get_time();
+            gpio_intr_enable(btn_id);
+            return true;
+        }
     }
-    else
-    {
-        return false; // False button press
-    }
+    // Return false if the end of the function is reached, meaning there were not four consecutive lows, and re-enable interrupt
+    gpio_intr_enable(btn_id);
+    return false;
 }
 
 /********************************
@@ -101,12 +111,9 @@ bool user_button_debounce(int btn_id)
  */
 static void IRAM_ATTR user_button_isr_handler(void* id)
 {
-int button_press_id = (int)id;
-  if(user_button_debounce(id))
-  {
+    int button_press_id = (int)id;
     // Add the ID of the button that was pressed to the queue
     xQueueSendFromISR(user_button_queue, &button_press_id, NULL);
-  }  
 }
 
 

@@ -62,8 +62,7 @@
          .i2c_port = I2C_PORT,
          .scl_io_num = I2C_SCL_PIN,
          .sda_io_num = I2C_SDA_PIN,
-         .clk_source = I2C_CLK_SRC_DEFAULT,
-         .flags.enable_internal_pullup = 1
+         .clk_source = I2C_CLK_SRC_DEFAULT
      };
  
      esp_err_t err = i2c_new_master_bus(&i2c_conf, &i2c_bus_handle);
