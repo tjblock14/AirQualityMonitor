@@ -9,8 +9,10 @@
 #include "Userbuttons.h"
 #include "user_control.h"
 #include "esp_sleep.h"
+#include <stdbool.h>
 
 uint8_t clear_display_cmd[2] = {0x7C, 0x2D};
+bool read_inital_data_on_startup = false;
 
 
 display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_page)
@@ -82,17 +84,25 @@ void set_ui_screen_page(display_screen_pages_t set_page)
     }
 }
 
+bool is_initial_data_ready()
+{
+    return read_inital_data_on_startup;
+}
+
 
 /*******************
  * @brief The main task for the display. This will read from the data queues of the sensors and display it on the UI
  *******************/
 void display_task(void *parameter)
 {
-   // On fresh startup, set take initial screen measurements
-   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
-   if(wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) // undefined if woken not from deep sleep
+   // On fresh startup, display taking initial measurements
+   if(!read_inital_data_on_startup) // undefined if woken not from deep sleep
    {
     set_ui_screen_page(STARTUP_SCREEN);
+   }
+   else if(read_inital_data_on_startup && check_recent_user_interaction())  // data averaged, and avoiding deep sleep on startup
+   {
+    set_ui_screen_page(CO2_SCREEN);
    }
 
 
@@ -109,6 +119,9 @@ void display_task(void *parameter)
                 {
                     set_ui_screen_page(current_page);
                 }
+                // CO2 sensor takes longest to get average data
+                read_inital_data_on_startup = true;
+
                 xSemaphoreGive(co2_mutex);
             }
 

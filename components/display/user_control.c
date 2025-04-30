@@ -103,8 +103,11 @@ void handle_button_press(int btn_id)
         switch(btn_id)
         {
             case USR_BTN_ONE_PIN:  // Increment the screen page, initialize display with new screen
-                current_page = get_next_screen_page(current_page);
-                set_ui_screen_page(current_page);
+                if(is_initial_data_ready())  // only allow the user to switch off the initial screen once data has been averaged
+                {
+                    current_page = get_next_screen_page(current_page);
+                    set_ui_screen_page(current_page);
+                }
                 break;
             case USR_BTN_TWO_PIN:  // Go to setpoint screen
                 get_setpoint_screen();

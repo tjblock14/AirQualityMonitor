@@ -2,6 +2,7 @@
 #define IAQ_UI_H
 
 #include "stdint.h"
+#include "stdbool.h"
 
 extern uint8_t clear_display_cmd[2];
 
@@ -22,6 +23,7 @@ typedef enum {
 
 display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_page);
 void set_ui_screen_page(display_screen_pages_t setpage);
+bool is_initial_data_ready();
 
 extern display_screen_pages_t current_page;
 
