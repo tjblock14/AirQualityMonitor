@@ -17,6 +17,9 @@ QueueHandle_t user_button_queue = NULL;
 const int USER_BUTTONS[] = {USR_BTN_ONE_PIN, USR_BTN_TWO_PIN, USR_BTN_THREE_PIN, USR_BTN_FOUR_PIN, PWR_BTN_PIN};
 const size_t NUM_BUTTONS = sizeof(USER_BUTTONS) / sizeof(USER_BUTTONS[0]);
 
+// This variable ensures that once the device is consistently in sleep mode with no user interaction, to only turn the backlights off once
+RTC_DATA_ATTR bool display_turned_off_in_sleep = false;
+
 /******************************************
  * @brief Checks if the button that is pressed was held for 10 seconds. Only needed for power button
  * @returns true if held for 10 seconds, false if not
@@ -49,6 +52,24 @@ bool was_button_held_for_ten_seconds(int btn_id)
 bool was_button_held_for_three_seconds()
 {
     return false;
+}
+
+// This function is called upon user interaction so that once it goes back to sleep, this variable will be reset
+void reset_display_off_in_sleep()
+{
+    display_turned_off_in_sleep = false;
+}
+
+// This function is used when the display is being powered down so that it only needs to be powered down once, not repeatedly
+void set_display_off_in_sleep()
+{
+    display_turned_off_in_sleep = true;
+}
+
+// This funciton is used to check whether or not the display has already been turned off
+bool is_display_off_in_consistent_sleep()
+{
+    return display_turned_off_in_sleep;
 }
 
 /*******************************************

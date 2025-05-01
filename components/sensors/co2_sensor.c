@@ -98,6 +98,7 @@ void co2_task(void *parameter)
             vTaskDelay(pdMS_TO_TICKS(500));
 
             // Wakeup CO2 sensor every time the device itsel awakens, this sensor does not respond to this command, but it is necessary
+            // This is the cause of the red log when monitoring on computer
             i2c_master_transmit(i2c_co2_device_handle, wakeup_co2_cmd, sizeof(wakeup_co2_cmd), pdMS_TO_TICKS(300));
 
             err = i2c_master_transmit(i2c_co2_device_handle, co2_start_cmd, sizeof(co2_start_cmd), pdMS_TO_TICKS(300));

@@ -41,6 +41,12 @@ void deep_sleep_monitor_task(void *parameter)
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 
+    // Turn backlight off of the display
+    if(!is_display_off_in_consistent_sleep())
+    {
+        power_down_display();
+    }
+    vTaskDelay(pdMS_TO_TICKS(700));
     // will sleep for 5 seconds then wakeup for more readings
     esp_sleep_enable_timer_wakeup(WAKEUP_TIME);
     ESP_LOGI("DEEP_SLEEP", "Entering Deep Sleep");

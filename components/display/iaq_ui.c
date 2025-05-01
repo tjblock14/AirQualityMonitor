@@ -12,9 +12,47 @@
 #include <stdbool.h>
 
 uint8_t clear_display_cmd[2] = {0x7C, 0x2D};
-bool read_inital_data_on_startup = false;
+RTC_DATA_ATTR bool read_inital_data_on_startup = false;
 
+/**************************************
+ * @brief This function sends four subsequent commands to the display when entering deep sleep. 
+ *   It turns all of the backlights to 0% brightness, and clears the screen
+ *************************************/
+void power_down_display()
+{
+    uint8_t blue_backlight_off_cmd[2] = {0x7C, 0xBC};
+    uint8_t green_backlight_off_cmd[2] = {0x7C, 0x9E};
+    uint8_t primary_backlight_off_cmd[2] = {0x7C, 0x80};
 
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, blue_backlight_off_cmd, sizeof(blue_backlight_off_cmd), pdMS_TO_TICKS(500)));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, green_backlight_off_cmd, sizeof(green_backlight_off_cmd), pdMS_TO_TICKS(500)));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, primary_backlight_off_cmd, sizeof(primary_backlight_off_cmd), pdMS_TO_TICKS(500)));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(500)));
+
+    set_display_off_in_sleep();
+}
+
+/**************************************
+ * @brief This function sends three subseuent commands to the display when it wakes up
+ *   The commands set the brightness of the three different backlights on the display so the text
+ *  is easily visible
+ */
+void power_display_on()
+{
+    uint8_t blue_backlight_on_cmd[2] = {0x7C, 210};
+    uint8_t green_backlight_on_cmd[2] = {0x7C, 180};
+    uint8_t primary_backlight_on_cmd[2] = {0x7C, 0x9D};
+
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, blue_backlight_on_cmd, sizeof(blue_backlight_on_cmd), pdMS_TO_TICKS(500)));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, green_backlight_on_cmd, sizeof(green_backlight_on_cmd), pdMS_TO_TICKS(500)));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, primary_backlight_on_cmd, sizeof(primary_backlight_on_cmd), pdMS_TO_TICKS(500)));
+}
+
+/********************************
+ * @brief This function gets the next page to display on the screen, based on what the current page is
+ * @param display_page is the currently displayed page on the screen
+ * @return This is the page that will be displayed next
+ */
 display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_page)
 {
     display_screen_pages_t next_screen = STARTUP_SCREEN;
@@ -89,6 +127,15 @@ bool is_initial_data_ready()
  *******************/
 void display_task(void *parameter)
 {
+    // If the display is first turning on, make sure it is at the correct brightness
+    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+    if(wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED)
+    {
+       power_display_on();
+       set_backlight_updated(); // Avoid setting the brightness multiple times
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000));  // Allow time for display to show its brightnesses before sending string
+
    // On fresh startup, display taking initial measurements
    if(!read_inital_data_on_startup) // undefined if woken not from deep sleep
    {
@@ -120,7 +167,7 @@ void display_task(void *parameter)
                     current_page = CO2_SCREEN;
                     set_ui_screen_page(current_page);
                 }
-                // CO2 sensor takes longest to get average data
+                // CO2 sensor takes longest to get average data, so once the CO2 data has been averaged for the first time, set this variable to true
                 read_inital_data_on_startup = true;
 
                 xSemaphoreGive(co2_mutex);

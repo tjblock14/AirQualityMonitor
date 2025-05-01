@@ -18,4 +18,9 @@ bool was_button_held_for_ten_seconds(int btn_id);
 bool check_recent_user_interaction();
 bool user_button_debounce(int btn_id);
 
+// Used for only turning the display off once in consistent deep sleep
+bool is_display_off_in_consistent_sleep();
+void set_display_off_in_sleep();
+void reset_display_off_in_sleep();
+
 #endif // USERBUTTONS_H

@@ -24,6 +24,9 @@ display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_pag
 void set_ui_screen_page(display_screen_pages_t setpage);
 bool is_initial_data_ready();
 
+void power_display_on();
+void power_down_display();
+
 extern display_screen_pages_t current_page;
 
 #endif // IAQ_UI_H

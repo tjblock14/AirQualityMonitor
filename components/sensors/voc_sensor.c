@@ -73,7 +73,6 @@ void voc_task(void *parameter)
         uint16_t readable_voc = 0;
         // Set data array to zero upon new read
         memset(received_data, 0, sizeof(received_data));
-        esp_err_t err = ESP_FAIL;
         if(xSemaphoreTake(voc_mutex, pdMS_TO_TICKS(1000)) == pdTRUE)
         {
             // Allows all tasks to take their mutex upon startup
