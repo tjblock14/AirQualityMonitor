@@ -24,7 +24,7 @@ typedef struct {
     uint16_t average_co2;
     uint16_t average_temp;
     uint16_t average_humidity;
-    uint16_t  average_voc;
+    uint16_t average_voc;
     uint16_t co2_user_threshold;
     uint16_t co2_generally_unsafe_value;
     uint16_t voc_user_threshold;

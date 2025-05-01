@@ -49,7 +49,7 @@ void clear_display_screen()
 void move_cursor_to_second_row()
 {
     esp_err_t err = ESP_FAIL;
-    err = i2c_master_transmit(i2c_display_device_handle, cursor_to_second_row_cmd, sizeof(cursor_to_second_row_cmd), pdMS_TO_TICKS(100));
+    err = i2c_master_transmit(i2c_display_device_handle, cursor_to_second_row_cmd, sizeof(cursor_to_second_row_cmd), pdMS_TO_TICKS(500));
     if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error moving cursor to second row");
@@ -63,9 +63,9 @@ void startup_screen_init()
     snprintf(display_text_buf_line1, sizeof(display_text_buf_line1), "Taking initial");
     snprintf(display_text_buf_line2, sizeof(display_text_buf_line2), "measurements");
     
-    i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(100));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(500)));
     move_cursor_to_second_row();
-    i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(100));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(500)));
 
 }
 
@@ -78,7 +78,7 @@ void temp_humid_screen_init()
     sprintf(display_text_buf_line1, "Temp: %dF", sensor_data_buffer.average_temp);
     sprintf(display_text_buf_line2, "Humid: %d%%rH", sensor_data_buffer.average_humidity);
 
-    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(100));
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(500));
     if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error sending temperature string to screen");
@@ -87,7 +87,7 @@ void temp_humid_screen_init()
     // Move cursor to second row
     move_cursor_to_second_row();
 
-    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(100));
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(500));
     if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error sending humidity string to screen");
@@ -120,7 +120,7 @@ void voc_screen_init()
 
     sprintf(display_text_buf_line1, "VOC Level:");
     sprintf(display_text_buf_line2, "%d ppb", sensor_data_buffer.average_voc);
-    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(100));
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(500));
     if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error sending VOC string to screen");
@@ -129,7 +129,7 @@ void voc_screen_init()
     // Move cursor to second row
     move_cursor_to_second_row();
 
-    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(100));
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(500));
     if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error sending humidity string to screen");
@@ -155,13 +155,13 @@ void set_co2_thresh_screen_init()
 
     sprintf(display_text_buf_line1, "CO2 Thresh:");
     sprintf(display_text_buf_line2, "   %d ppm", sensor_data_buffer.co2_user_threshold);
-    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(100));
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(500));
 
 
     // Move cursor to second row
     move_cursor_to_second_row();
 
-    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(100));
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(500));
     if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error sending CO2 thresh");
@@ -178,12 +178,12 @@ void set_voc_thresh_screen_init()
 
     sprintf(display_text_buf_line1, "VOC Thresh:");
     sprintf(display_text_buf_line2, "   %d ppb", sensor_data_buffer.voc_user_threshold);
-    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(100));
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line1, strlen(display_text_buf_line1), pdMS_TO_TICKS(500));
 
     // Move cursor to second row
     move_cursor_to_second_row();
 
-    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(100));
+    err = i2c_master_transmit(i2c_display_device_handle, (uint8_t *)display_text_buf_line2, strlen(display_text_buf_line2), pdMS_TO_TICKS(500));
     if(err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error sending VOC thresh to screen");

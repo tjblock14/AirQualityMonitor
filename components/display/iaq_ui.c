@@ -9,10 +9,50 @@
 #include "Userbuttons.h"
 #include "user_control.h"
 #include "esp_sleep.h"
+#include <stdbool.h>
 
 uint8_t clear_display_cmd[2] = {0x7C, 0x2D};
+RTC_DATA_ATTR bool read_inital_data_on_startup = false;
 
+/**************************************
+ * @brief This function sends four subsequent commands to the display when entering deep sleep. 
+ *   It turns all of the backlights to 0% brightness, and clears the screen
+ *************************************/
+void power_down_display()
+{
+    uint8_t blue_backlight_off_cmd[2] = {0x7C, 0xBC};
+    uint8_t green_backlight_off_cmd[2] = {0x7C, 0x9E};
+    uint8_t primary_backlight_off_cmd[2] = {0x7C, 0x80};
 
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, blue_backlight_off_cmd, sizeof(blue_backlight_off_cmd), pdMS_TO_TICKS(500)));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, green_backlight_off_cmd, sizeof(green_backlight_off_cmd), pdMS_TO_TICKS(500)));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, primary_backlight_off_cmd, sizeof(primary_backlight_off_cmd), pdMS_TO_TICKS(500)));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(500)));
+
+    set_display_off_in_sleep();
+}
+
+/**************************************
+ * @brief This function sends three subseuent commands to the display when it wakes up
+ *   The commands set the brightness of the three different backlights on the display so the text
+ *  is easily visible
+ */
+void power_display_on()
+{
+    uint8_t blue_backlight_on_cmd[2] = {0x7C, 210};
+    uint8_t green_backlight_on_cmd[2] = {0x7C, 180};
+    uint8_t primary_backlight_on_cmd[2] = {0x7C, 0x9D};
+
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, blue_backlight_on_cmd, sizeof(blue_backlight_on_cmd), pdMS_TO_TICKS(500)));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, green_backlight_on_cmd, sizeof(green_backlight_on_cmd), pdMS_TO_TICKS(500)));
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, primary_backlight_on_cmd, sizeof(primary_backlight_on_cmd), pdMS_TO_TICKS(500)));
+}
+
+/********************************
+ * @brief This function gets the next page to display on the screen, based on what the current page is
+ * @param display_page is the currently displayed page on the screen
+ * @return This is the page that will be displayed next
+ */
 display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_page)
 {
     display_screen_pages_t next_screen = STARTUP_SCREEN;
@@ -28,9 +68,6 @@ display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_pag
             next_screen = VOC_SCREEN;
             break;
         case VOC_SCREEN:
-            next_screen = BATTERY_LEVEL_SCREEN;
-            break;
-        case BATTERY_LEVEL_SCREEN:  // Go back to beginning, Will only enter settings screens if specified
             next_screen = TEMPERATURE_HUMIDITY_SCREEN;
             break;
         // if on threshold screens, do nothing
@@ -67,9 +104,6 @@ void set_ui_screen_page(display_screen_pages_t set_page)
         case VOC_SCREEN:
             voc_screen_init();
             break;
-        case BATTERY_LEVEL_SCREEN:
-            battery_screen_init();
-            break;
         case SET_CO2_THRESH_SCREEN:
             set_co2_thresh_screen_init();
             break;
@@ -82,17 +116,34 @@ void set_ui_screen_page(display_screen_pages_t set_page)
     }
 }
 
+bool is_initial_data_ready()
+{
+    return read_inital_data_on_startup;
+}
+
 
 /*******************
  * @brief The main task for the display. This will read from the data queues of the sensors and display it on the UI
  *******************/
 void display_task(void *parameter)
 {
-   // On fresh startup, set take initial screen measurements
-   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
-   if(wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) // undefined if woken not from deep sleep
+    // If the display is first turning on, make sure it is at the correct brightness
+    esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+    if(wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED)
+    {
+       power_display_on();
+       set_backlight_updated(); // Avoid setting the brightness multiple times
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000));  // Allow time for display to show its brightnesses before sending string
+
+   // On fresh startup, display taking initial measurements
+   if(!read_inital_data_on_startup) // undefined if woken not from deep sleep
    {
     set_ui_screen_page(STARTUP_SCREEN);
+   }
+   else if(read_inital_data_on_startup && check_recent_user_interaction())  // data averaged, and avoiding deep sleep on startup
+   {
+    set_ui_screen_page(CO2_SCREEN);
    }
 
 
@@ -109,6 +160,16 @@ void display_task(void *parameter)
                 {
                     set_ui_screen_page(current_page);
                 }
+
+                // On first startup, when data ready, display new page
+                if(!read_inital_data_on_startup)
+                {
+                    current_page = CO2_SCREEN;
+                    set_ui_screen_page(current_page);
+                }
+                // CO2 sensor takes longest to get average data, so once the CO2 data has been averaged for the first time, set this variable to true
+                read_inital_data_on_startup = true;
+
                 xSemaphoreGive(co2_mutex);
             }
 

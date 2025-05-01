@@ -15,6 +15,9 @@
 #define MAX_VOC_THRESH    400
 #define MIN_VOC_THRESH    200
 
+// Variable to only change brightness of backlight on first user interaction
+bool backlight_updated = false;
+
 /***************************
  * @brief If user button 2 is pressed while the screen is either the CO2 or VOC level,
  *        it will take the user to the screen where they can use button 3 and 4 to
@@ -103,8 +106,11 @@ void handle_button_press(int btn_id)
         switch(btn_id)
         {
             case USR_BTN_ONE_PIN:  // Increment the screen page, initialize display with new screen
-                current_page = get_next_screen_page(current_page);
-                set_ui_screen_page(current_page);
+                if(is_initial_data_ready())  // only allow the user to switch off the initial screen once data has been averaged
+                {
+                    current_page = get_next_screen_page(current_page);
+                    set_ui_screen_page(current_page);
+                }
                 break;
             case USR_BTN_TWO_PIN:  // Go to setpoint screen
                 get_setpoint_screen();
@@ -123,6 +129,12 @@ void handle_button_press(int btn_id)
         }
 }
 
+// Needed on initial startup to prevent multiple brightness sets
+void set_backlight_updated()
+{
+    backlight_updated = true;
+}
+
 void user_button_task(void *parameter)
 {
     while(1)
@@ -131,9 +143,26 @@ void user_button_task(void *parameter)
         int button_pressed_id = 0;
         if(xQueueReceive(user_button_queue, &button_pressed_id, portMAX_DELAY))
         {
-            // will want to check here if the button is held or not
-            ESP_LOGI("BTN", "Button press sensed at GPIO %d", button_pressed_id);
-            handle_button_press(button_pressed_id);
+            if(user_button_debounce(button_pressed_id))  // Debounce button
+            {
+                // will want to check here if the button is held or not
+                ESP_LOGI("BTN", "Button press sensed at GPIO %d", button_pressed_id);
+                handle_button_press(button_pressed_id);
+
+                // The first time after the device has been woken up by a user, turn the backlights on, and set the variable so that
+                // it does not send the commands to turn backlights on every time through this task
+                if(!backlight_updated)
+                {
+                    power_display_on();
+                    backlight_updated = true;
+                }
+
+                // if the device currently says that display is off upon a press, reset it
+                if(is_display_off_in_consistent_sleep())
+                {
+                    reset_display_off_in_sleep();
+                }
+            }
         }
     }
 }

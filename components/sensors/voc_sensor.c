@@ -19,6 +19,9 @@ uint8_t init_voc_sensor_cmd[2] = {0x20, 0x03};
 uint8_t voc_measure_cmd[2]     = {0x20, 0x08};
 uint8_t received_data[6] = {0};
 
+// Variable that tracks if the VOC sensor has already been initialized to avoid unccecesary re-initialization
+RTC_DATA_ATTR static bool voc_sensor_initialized = false;
+
 // Simple function for the init command of the sensor since we need to use this repeatedly on first startup
 void init_voc_sensor()
 {
@@ -64,15 +67,12 @@ void voc_task(void *parameter)
     {
         ESP_LOGE(TAG, "Error creating VOC mutex");
     }
-
-    esp_sleep_wakeup_cause_t reason_for_wakeup = esp_sleep_get_wakeup_cause();
     
     while(1)
     {
         uint16_t readable_voc = 0;
         // Set data array to zero upon new read
         memset(received_data, 0, sizeof(received_data));
-        esp_err_t err = ESP_FAIL;
         if(xSemaphoreTake(voc_mutex, pdMS_TO_TICKS(1000)) == pdTRUE)
         {
             // Allows all tasks to take their mutex upon startup
@@ -82,9 +82,10 @@ void voc_task(void *parameter)
             // On fresh power up, the sensor needs to initialize, then take 15 consecutive readings before it gets a valid value
             // Also check for recent button press because if button was pressed on startup, device will not enter sleep immediately
             // so we need to ensure there was no press as well
-            if((reason_for_wakeup == ESP_SLEEP_WAKEUP_UNDEFINED) && !check_recent_user_interaction())
+            if(!check_recent_user_interaction() && !voc_sensor_initialized)
             {
                 init_voc_sensor();
+                voc_sensor_initialized = true;
                 vTaskDelay(pdMS_TO_TICKS(50));
 
                 // take 20 readings on fresh startup to be safe and ensure readings area valid when we start storing data

@@ -17,7 +17,7 @@
 #include "Userbuttons.h"
 #include "esp_sleep.h"
 
-#define WAKEUP_TIME 5000000  // one second
+#define WAKEUP_TIME 5000000  // five seconds
 
 // Needs to do something with this here, will not work because then on ever wake from deep sleep, current page is startup
 RTC_DATA_ATTR display_screen_pages_t current_page = STARTUP_SCREEN;
@@ -38,9 +38,15 @@ void deep_sleep_monitor_task(void *parameter)
     // Check if all mutexes are free, recent user interaction, and the status of the two buzzers
     while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0) || check_recent_user_interaction() || is_user_buzzer_on() || is_safety_buzzer_on())
     {
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 
+    // Turn backlight off of the display
+    if(!is_display_off_in_consistent_sleep())
+    {
+        power_down_display();
+    }
+    vTaskDelay(pdMS_TO_TICKS(700));
     // will sleep for 5 seconds then wakeup for more readings
     esp_sleep_enable_timer_wakeup(WAKEUP_TIME);
     ESP_LOGI("DEEP_SLEEP", "Entering Deep Sleep");
@@ -63,7 +69,7 @@ void app_main()
     xTaskCreate(temp_humidity_task, "TEMP_HUMIDITY_TASk", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(co2_task, "CO2_TASK", 1024 * 3, NULL, 5, NULL);
     xTaskCreate(voc_task, "VOC_TASK", 1024 * 3, NULL, 5, NULL);
-    xTaskCreate(display_task, "DISPLAY_TASK", 1024 * 3, NULL, 4, NULL);
+    xTaskCreate(display_task, "DISPLAY_TASK", 1024 * 4, NULL, 4, NULL);
     xTaskCreate(user_button_task, "BUTTON_TASK", 1024 * 4, NULL, 6, NULL);
    
     //Lowest priority task

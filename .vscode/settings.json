@@ -57,7 +57,9 @@
         "power_button.h": "c",
         "esp_timer.h": "c",
         "stdint.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "co2_sensor.h": "c",
+        "esp_sleep.h": "c"
     },
     "idf.pythonInstallPath": "C:\\Espressif\\tools\\idf-python\\3.11.2\\python.exe",
 }
