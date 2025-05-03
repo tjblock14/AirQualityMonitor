@@ -24,10 +24,10 @@ void power_down_display()
     uint8_t green_backlight_off_cmd[2] = {0x7C, 0x9E};
     uint8_t primary_backlight_off_cmd[2] = {0x7C, 0x80};
 
+    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(500)));
     ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, blue_backlight_off_cmd, sizeof(blue_backlight_off_cmd), pdMS_TO_TICKS(500)));
     ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, green_backlight_off_cmd, sizeof(green_backlight_off_cmd), pdMS_TO_TICKS(500)));
     ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, primary_backlight_off_cmd, sizeof(primary_backlight_off_cmd), pdMS_TO_TICKS(500)));
-    ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, clear_display_cmd, sizeof(clear_display_cmd), pdMS_TO_TICKS(500)));
 
     set_display_off_in_sleep();
 }
