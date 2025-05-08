@@ -138,17 +138,17 @@ bool is_initial_data_ready()
  ********************************************************/
 void process_sensor_data(uint16_t *sensor_readings, uint8_t *reading_index, uint16_t *average_value ,SemaphoreHandle_t sensor_mutex, const char *sensor_name, uint8_t sensor_data_screen)
 {
-    if(*reading_index >= MAX_SENSOR_READINGS)
+    if(*reading_index >= MAX_SENSOR_READINGS)  // if sensor has taken 10 readings, proceed
     {
         if(xSemaphoreTake(sensor_mutex, pdMS_TO_TICKS(20)) == pdTRUE)
         {
-            *average_value = get_average_sensor_data(sensor_readings, reading_index, sensor_name);
-            if(current_page == sensor_data_screen && !is_display_off_in_consistent_sleep())
+            *average_value = get_average_sensor_data(sensor_readings, reading_index, sensor_name); 
+            if(current_page == sensor_data_screen && !is_display_off_in_consistent_sleep())  // If the device is awake and the current displayed page is the one of this sensor, update value
             {
                 set_ui_screen_page(current_page);
             }
 
-            if(!strcmp(sensor_name, "CO2"))
+            if(!strcmp(sensor_name, "CO2"))  // The CO2 sensor takes the longest to get to 10 readings so on initial startup, if the CO2 sensor is being averaged, change from startup screen to CO2 screen
             {
                 if(!read_inital_data_on_startup)
                 {
