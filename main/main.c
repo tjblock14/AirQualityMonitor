@@ -23,22 +23,21 @@
 RTC_DATA_ATTR display_screen_pages_t current_page = STARTUP_SCREEN;
 
 /*********************************
- * 
- * @brief This task checks to see if all of the semaphores used by the sensors and display are free. If so,
- *        then all sensors have completed their periodic reading and the device can enter deep sleep with a timer wakeup
- * 
- * Will also need to implement button presses etc.
+ * @brief This task checks to see if all of the mutexes used by the sensors and display are free, as well as if any buzzers are on, and if there
+ *        has been any recent user interaction. If so, then the device can sleep for 5 seconds
  */
 void deep_sleep_monitor_task(void *parameter)
 {
-    // give time for other tasks to start
+    // Allow all other tasks to begin
     vTaskDelay(pdMS_TO_TICKS(1000));
-    ESP_LOGI("DEEP_SLEEP", "Checking if all sensor readings complete.....");
 
-    // Check if all mutexes are free, recent user interaction, and the status of the two buzzers
-    while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0) || check_recent_user_interaction() || is_user_buzzer_on() || is_safety_buzzer_on())
+    // Check if any of the sensor mutexes are taken, if either buzzer is on, and if there has been recent user interaction,
+    // if none of these things are true, move on, otherwise delay and check again
+    ESP_LOGI("DEEP_SLEEP", "Checking if device is ready for deep sleep.....");
+    while((uxSemaphoreGetCount(temp_humid_mutex) == 0) || (uxSemaphoreGetCount(co2_mutex) == 0) || (uxSemaphoreGetCount(voc_mutex) == 0) || \
+           check_recent_user_interaction() || is_user_buzzer_on() || is_safety_buzzer_on())
     {
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 
     // Turn backlight off of the display
@@ -47,11 +46,12 @@ void deep_sleep_monitor_task(void *parameter)
         power_down_display();
     }
     vTaskDelay(pdMS_TO_TICKS(700));
-    // will sleep for 5 seconds then wakeup for more readings
-    esp_sleep_enable_timer_wakeup(WAKEUP_TIME);
+    esp_sleep_enable_ext0_wakeup(PWR_BTN_PIN, 0);  // Wake-up from deep sleep when the power button is pressed
+    esp_sleep_enable_timer_wakeup(WAKEUP_TIME);    // Wake up after 5 seconds to take periodic measurements
     ESP_LOGI("DEEP_SLEEP", "Entering Deep Sleep");
     esp_deep_sleep_start();
 }
+
 
 void app_main()
 {

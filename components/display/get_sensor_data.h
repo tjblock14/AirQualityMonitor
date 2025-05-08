@@ -6,7 +6,6 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 
-uint16_t get_co2_level_for_display();
 uint16_t get_average_sensor_data(void *sensor_data, uint8_t *sensor_index, const char *sensor_name);
 
 

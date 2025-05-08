@@ -7,6 +7,7 @@
 #include "ui_screen_inits.h"
 #include "general_sensors.h"
 #include "power_button.h"
+#include "driver/gpio.h"
 
 // User cannot set threshold greater than this, as this is already dangerous
 #define MAX_CO2_THRESHOLD 1000
@@ -50,6 +51,18 @@ void get_setpoint_screen()
     set_ui_screen_page(current_page);
 }
 
+void repeated_increment_while_held(uint16_t *sensor_threshold)
+{
+    vTaskDelay(pdMS_TO_TICKS(500));  // Give 500ms to see if the button was held or not
+    while(gpio_get_level(USR_BTN_THREE_PIN) == 0) // decrease every 50ms while held
+    {
+        (*sensor_threshold)++;
+        set_ui_screen_page(current_page);
+        vTaskDelay(pdMS_TO_TICKS(50));
+        ESP_LOGW("BTN", "Incrementing held");
+    }
+}
+
 /********************************
  * @brief when the button is pressed while on one of the setpoint screens, increment the
  *        setpoint. If max value is reached or the current screen is not a setpoint screen, do nothing
@@ -61,15 +74,28 @@ void increment_gas_setpoint()
         case SET_CO2_THRESH_SCREEN:
             sensor_data_buffer.co2_user_threshold++;
             set_ui_screen_page(current_page);
-            ESP_LOGI("Setpoint", "Incremented value");
+            repeated_increment_while_held(&sensor_data_buffer.co2_user_threshold);
             break;
         case SET_VOC_THRESH_SCREEN:
             sensor_data_buffer.voc_user_threshold++;
             set_ui_screen_page(current_page);
             ESP_LOGI("Setpoint", "Incremented value");
+            repeated_increment_while_held(&sensor_data_buffer.voc_user_threshold);
             break;
         default:
             break;
+    }
+}
+
+void repeated_decrement_while_held(uint16_t *sensor_threshold)
+{
+    vTaskDelay(pdMS_TO_TICKS(500));  // Give 500ms to see if the button was held or not
+    while(gpio_get_level(USR_BTN_FOUR_PIN) == 0) // decrease every 50ms while held
+    {
+        (*sensor_threshold)--;
+        set_ui_screen_page(current_page);
+        vTaskDelay(pdMS_TO_TICKS(50));
+        ESP_LOGW("BTN", "Decrementing held");
     }
 }
 
@@ -84,10 +110,12 @@ void decrement_gas_setpoint()
         case SET_CO2_THRESH_SCREEN:
             sensor_data_buffer.co2_user_threshold--;
             set_ui_screen_page(current_page);
+            repeated_decrement_while_held(&sensor_data_buffer.co2_user_threshold);
             break;
             case SET_VOC_THRESH_SCREEN:
             sensor_data_buffer.voc_user_threshold--;
             set_ui_screen_page(current_page);
+            repeated_decrement_while_held(&sensor_data_buffer.voc_user_threshold);
             break;
         default:
             break;
@@ -112,16 +140,16 @@ void handle_button_press(int btn_id)
                     set_ui_screen_page(current_page);
                 }
                 break;
-            case USR_BTN_TWO_PIN:  // Go to setpoint screen
+            case USR_BTN_TWO_PIN:           // Go to setpoint screen
                 get_setpoint_screen();
                 break;
-            case USR_BTN_THREE_PIN:
+            case USR_BTN_THREE_PIN:         // If on setpoint screen, incrememnt user threshold
                 increment_gas_setpoint();
                 break;
-            case USR_BTN_FOUR_PIN:
+            case USR_BTN_FOUR_PIN:          // If on setpoint screen, decrement user threshold
                 decrement_gas_setpoint();
                 break;
-            case PWR_BTN_PIN:
+            case PWR_BTN_PIN:              // Acknowledge buzzer, put to sleep, or power off
                 handle_pwr_btn_press();
                 break;
             default:
