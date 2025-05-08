@@ -1,4 +1,5 @@
 #include "i2c_config.h"
+#include "string.h"
 #include "iaq_ui.h"
 #include "get_sensor_data.h"
 #include "general_sensors.h"
@@ -124,6 +125,45 @@ bool is_initial_data_ready()
 }
 
 
+/*******************************************************
+ * @brief This function is called four times in the display task, once for each sensor. It checks if 10 readings of the sensor has been taken and if so, it will get
+ *        the average value of the 10 readings and display it is the device is awake and currently on that sensor's screen
+ * @param sensor_readings is the array of the 10 most recent readings of the sensor
+ * @param reading_index is how many readings of the sensor has been taken. This is needed because if this is not 10 yet, nothing will happen here
+ * @param average_value is where the average of the 10 most recent readings for the sensor is stored
+ * @param sensor_mutex is the mutex for each specific sensor
+ * @param sensor_name is a character string for which sensor is being worked with. This is needed so that upon first startup, once the CO2 sensor is averaged, it will 
+ *                    move from the startup screen to the CO2 screen and then the user can interact with the device from there
+ * @param sensor_data_screen is the screen related to the sensor where it displays its average value
+ *******************************************************/
+void process_sensor_data(uint16_t *sensor_readings, uint8_t *reading_index, uint16_t *average_value ,SemaphoreHandle_t sensor_mutex, const char *sensor_name, uint8_t sensor_data_screen)
+{
+    if(*reading_index >= MAX_SENSOR_READINGS)
+    {
+        if(xSemaphoreTake(sensor_mutex, pdMS_TO_TICKS(20)) == pdTRUE)
+        {
+            *average_value = get_average_sensor_data(sensor_readings, reading_index, sensor_name);
+            if(current_page == sensor_data_screen && !is_display_off_in_consistent_sleep())
+            {
+                set_ui_screen_page(current_page);
+            }
+
+            if(!strcmp(sensor_name, "CO2"))
+            {
+                if(!read_inital_data_on_startup)
+                {
+                    current_page = CO2_SCREEN;
+                    set_ui_screen_page(current_page);
+                }
+                read_inital_data_on_startup = true;
+            }
+
+            xSemaphoreGive(sensor_mutex);
+        }
+    }
+}
+
+
 /*******************
  * @brief The main task for the display. This will read from the data queues of the sensors and display it on the UI
  *******************/
@@ -148,61 +188,14 @@ void display_task(void *parameter)
     set_ui_screen_page(CO2_SCREEN);
    }
 
-
     while(1)
     {
         // Get most recent average value from all sensors
-        if(sensor_data_buffer.co2_reading_index >= MAX_SENSOR_READINGS)
-        {
-            if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(20)) == pdTRUE)
-            {
-                sensor_data_buffer.average_co2 = get_average_sensor_data(sensor_data_buffer.co2_concentration, &sensor_data_buffer.co2_reading_index, "CO2");
-                if(current_page == CO2_SCREEN && !is_display_off_in_consistent_sleep()) // if current page displayed is the CO2 screen, and the device is awake, update data on screem
-                {
-                    set_ui_screen_page(current_page);
-                }
-
-                // On first startup, when data ready, display CO2 page
-                if(!read_inital_data_on_startup)
-                {
-                    current_page = CO2_SCREEN;
-                    set_ui_screen_page(current_page);
-                }
-                // CO2 sensor takes longest to get average data, so once the CO2 data has been averaged for the first time, set this variable to true
-                read_inital_data_on_startup = true;
-
-                xSemaphoreGive(co2_mutex);
-            }
-        }
-        
-        // If this is true, both the temperature and humidity readings have reached 10, so average them both out
-        if(sensor_data_buffer.temp_reading_index >= MAX_SENSOR_READINGS)
-        {
-            if(xSemaphoreTake(temp_humid_mutex, pdMS_TO_TICKS(20)) == pdTRUE)
-            {
-                sensor_data_buffer.average_temp = get_average_sensor_data(sensor_data_buffer.temperature, &sensor_data_buffer.temp_reading_index, "TEMP");
-                sensor_data_buffer.average_humidity = get_average_sensor_data(sensor_data_buffer.humidity, &sensor_data_buffer.humid_reading_index, "HUMID");
-                if(current_page == TEMPERATURE_HUMIDITY_SCREEN && !is_display_off_in_consistent_sleep()) // if current page displayed is the temp/humidity screen, update data on screen
-                {
-                    set_ui_screen_page(current_page);
-                }
-                xSemaphoreGive(temp_humid_mutex);
-            }
-        }
-        
-        if(sensor_data_buffer.voc_reading_index >= MAX_SENSOR_READINGS)
-        {
-            if(xSemaphoreTake(voc_mutex, pdMS_TO_TICKS(50)) == pdTRUE)
-            {
-                sensor_data_buffer.average_voc = get_average_sensor_data(sensor_data_buffer.voc_measurement, &sensor_data_buffer.voc_reading_index, "VOC");
-                if(current_page == VOC_SCREEN && !is_display_off_in_consistent_sleep()) // if current page displayed is the VOC screen, update data on screen
-                {
-                    set_ui_screen_page(current_page);
-                }
-                xSemaphoreGive(voc_mutex);
-            }
-        }
-        
+        process_sensor_data(sensor_data_buffer.co2_concentration, &sensor_data_buffer.co2_reading_index, &sensor_data_buffer.average_co2, co2_mutex, "CO2", CO2_SCREEN);
+        process_sensor_data(sensor_data_buffer.temperature, &sensor_data_buffer.temp_reading_index, &sensor_data_buffer.average_temp, temp_humid_mutex, "TEMP", TEMPERATURE_HUMIDITY_SCREEN);
+        process_sensor_data(sensor_data_buffer.humidity, &sensor_data_buffer.humid_reading_index, &sensor_data_buffer.average_humidity, temp_humid_mutex, "HUMID", TEMPERATURE_HUMIDITY_SCREEN);
+        process_sensor_data(sensor_data_buffer.voc_measurement, &sensor_data_buffer.voc_reading_index, &sensor_data_buffer.average_voc, voc_mutex, "VOC", VOC_SCREEN);
+       
         check_user_threshold();
         check_general_safety_value();
         vTaskDelay(pdMS_TO_TICKS(50));
