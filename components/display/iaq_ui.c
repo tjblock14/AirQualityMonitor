@@ -125,7 +125,7 @@ bool is_initial_data_ready()
 }
 
 
-/*******************************************************
+/********************************************************
  * @brief This function is called four times in the display task, once for each sensor. It checks if 10 readings of the sensor has been taken and if so, it will get
  *        the average value of the 10 readings and display it is the device is awake and currently on that sensor's screen
  * @param sensor_readings is the array of the 10 most recent readings of the sensor
@@ -135,7 +135,7 @@ bool is_initial_data_ready()
  * @param sensor_name is a character string for which sensor is being worked with. This is needed so that upon first startup, once the CO2 sensor is averaged, it will 
  *                    move from the startup screen to the CO2 screen and then the user can interact with the device from there
  * @param sensor_data_screen is the screen related to the sensor where it displays its average value
- *******************************************************/
+ ********************************************************/
 void process_sensor_data(uint16_t *sensor_readings, uint8_t *reading_index, uint16_t *average_value ,SemaphoreHandle_t sensor_mutex, const char *sensor_name, uint8_t sensor_data_screen)
 {
     if(*reading_index >= MAX_SENSOR_READINGS)
