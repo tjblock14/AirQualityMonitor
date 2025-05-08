@@ -10,7 +10,7 @@
 #define DEBOUNCE_DELAY (pdMS_TO_TICKS(20))   //10 ms delay
 #define AVOID_SLEEP_TIME (120000000)  // 2 minutes in us
 #define TEN_SECOND_HOLD (10000000)   // 10 seconds in us 
-RTC_DATA_ATTR uint32_t last_button_press_time = 0;  // Make sure we do not avoid sleep if no user interaction since wake
+uint32_t last_button_press_time = AVOID_SLEEP_TIME;  // Make sure we do not avoid sleep if no user interaction since wake
 uint8_t last_button_pressed_id = 0;
 QueueHandle_t user_button_queue = NULL;
 
@@ -19,6 +19,7 @@ const size_t NUM_BUTTONS = sizeof(USER_BUTTONS) / sizeof(USER_BUTTONS[0]);
 
 // This variable ensures that once the device is consistently in sleep mode with no user interaction, to only turn the backlights off once
 RTC_DATA_ATTR bool display_turned_off_in_sleep = false;
+bool wakeup_reason_checked = false;
 
 /******************************************
  * @brief Checks if the button that is pressed was held for 10 seconds. Only needed for power button
@@ -72,15 +73,36 @@ bool is_display_off_in_consistent_sleep()
     return display_turned_off_in_sleep;
 }
 
+void get_wakeup_reason_first_time()
+{
+    esp_sleep_wakeup_cause_t wakeup_cause = esp_sleep_get_wakeup_cause();
+    if(wakeup_cause == ESP_SLEEP_WAKEUP_EXT0)
+    {
+        last_button_press_time = esp_timer_get_time();
+        reset_display_off_in_sleep();
+    }
+    else if(wakeup_cause == ESP_SLEEP_WAKEUP_UNDEFINED)
+    {
+        last_button_press_time = 0;
+    }
+}
+
+
 /*******************************************
  * @brief This function will be called by the deep sleep task to check if the user has recently interacted with the device. This will prevent
  *        the device from entering deep sleep mode if there has been recent interaction
  *******************************************/
 bool check_recent_user_interaction()
 {
-    // Might want to check which button was pressed too, because if pwr button held for 3 seconds, enter sleep
-    // If two minutes have passed since last user interaction, set flag to let deep sleep task enter deep sleep
-    // Maybe need to work on this function
+    // If the power button was pressed to wake the device from deep sleep, make sure it avoids deep sleep
+    // only check this the first time the function is called to ensure deep sleep is not constantly avoided
+    if(!wakeup_reason_checked)
+    {
+        get_wakeup_reason_first_time();
+        wakeup_reason_checked = true;
+    }
+    // Get the current run time. If it is more than 2 minutes pst the last time that a button as pressed, return false.
+    // If not, rturn true, preventing deep sleep will be avoided
     uint32_t current_time = esp_timer_get_time();
     if((current_time - last_button_press_time) >= AVOID_SLEEP_TIME)
     {

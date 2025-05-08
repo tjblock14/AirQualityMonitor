@@ -22,5 +22,6 @@ bool user_button_debounce(int btn_id);
 bool is_display_off_in_consistent_sleep();
 void set_display_off_in_sleep();
 void reset_display_off_in_sleep();
+void set_recent_user_interaction_for_sleep();
 
 #endif // USERBUTTONS_H

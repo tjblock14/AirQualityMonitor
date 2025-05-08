@@ -15,8 +15,8 @@ uint8_t clear_display_cmd[2] = {0x7C, 0x2D};
 RTC_DATA_ATTR bool read_inital_data_on_startup = false;
 
 /**************************************
- * @brief This function sends four subsequent commands to the display when entering deep sleep. 
- *   It turns all of the backlights to 0% brightness, and clears the screen
+ * @brief This function prepares the display for deep sleep and power off modes
+ *        It turns all of the backlights to 0% brightness, and clears the screen
  *************************************/
 void power_down_display()
 {
@@ -33,10 +33,10 @@ void power_down_display()
 }
 
 /**************************************
- * @brief This function sends three subseuent commands to the display when it wakes up
- *   The commands set the brightness of the three different backlights on the display so the text
- *  is easily visible
- */
+ * @brief This function sends three subseuent commands to the display when it wakes up, setting the
+ *        brightness of the three different backlights, primary, blue, and green for the best readability
+ *        of things displayed on the screen
+ **************************************/
 void power_display_on()
 {
     uint8_t blue_backlight_on_cmd[2] = {0x7C, 210};
@@ -48,11 +48,11 @@ void power_display_on()
     ESP_ERROR_CHECK(i2c_master_transmit(i2c_display_device_handle, primary_backlight_on_cmd, sizeof(primary_backlight_on_cmd), pdMS_TO_TICKS(500)));
 }
 
-/********************************
+/****************************************
  * @brief This function gets the next page to display on the screen, based on what the current page is
  * @param display_page is the currently displayed page on the screen
- * @return This is the page that will be displayed next
- */
+ * @returns the page that is to be displayed next
+ ***************************************/
 display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_page)
 {
     display_screen_pages_t next_screen = STARTUP_SCREEN;
@@ -84,10 +84,11 @@ display_screen_pages_t get_next_screen_page(display_screen_pages_t displayed_pag
     return next_screen;
 }
 
-/******************************
- * @brief This function will be called once on startup, and then every time the button to proceed to the next screen is pressed
+/*************************************************
+ * @brief This function is used to set the screen based on what the current page is. Depending on the current page, 
+ *        the corresponding function is called with the proper strings to display
  * @param set_page is the page that will be displayed on the screen when this function is called
- */
+ *************************************************/
 void set_ui_screen_page(display_screen_pages_t set_page)
 {
     switch(set_page)
@@ -116,6 +117,7 @@ void set_ui_screen_page(display_screen_pages_t set_page)
     }
 }
 
+// This function is used to prevent moving off the Startup Screen before any data is ready on initial startup
 bool is_initial_data_ready()
 {
     return read_inital_data_on_startup;
@@ -127,9 +129,9 @@ bool is_initial_data_ready()
  *******************/
 void display_task(void *parameter)
 {
-    // If the display is first turning on, make sure it is at the correct brightness
+    // If the device is first turning on, or woken by user button press, make sure it is at the correct brightness
     esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
-    if(wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED)
+    if(wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED || wakeup_reason == ESP_SLEEP_WAKEUP_EXT0)
     {
        power_display_on();
        set_backlight_updated(); // Avoid setting the brightness multiple times
@@ -137,11 +139,11 @@ void display_task(void *parameter)
     vTaskDelay(pdMS_TO_TICKS(1000));  // Allow time for display to show its brightnesses before sending string
 
    // On fresh startup, display taking initial measurements
-   if(!read_inital_data_on_startup) // undefined if woken not from deep sleep
+   if(!read_inital_data_on_startup)
    {
     set_ui_screen_page(STARTUP_SCREEN);
    }
-   else if(read_inital_data_on_startup && check_recent_user_interaction())  // data averaged, and avoiding deep sleep on startup
+   else if(read_inital_data_on_startup && check_recent_user_interaction())  // initial data taken, device is awake
    {
     set_ui_screen_page(CO2_SCREEN);
    }
@@ -149,19 +151,18 @@ void display_task(void *parameter)
 
     while(1)
     {
-
         // Get most recent average value from all sensors
         if(sensor_data_buffer.co2_reading_index >= MAX_SENSOR_READINGS)
         {
             if(xSemaphoreTake(co2_mutex, pdMS_TO_TICKS(20)) == pdTRUE)
             {
                 sensor_data_buffer.average_co2 = get_average_sensor_data(sensor_data_buffer.co2_concentration, &sensor_data_buffer.co2_reading_index, "CO2");
-                if(current_page == CO2_SCREEN) // if current page displayed is the CO2 screen, update data on screem
+                if(current_page == CO2_SCREEN && !is_display_off_in_consistent_sleep()) // if current page displayed is the CO2 screen, and the device is awake, update data on screem
                 {
                     set_ui_screen_page(current_page);
                 }
 
-                // On first startup, when data ready, display new page
+                // On first startup, when data ready, display CO2 page
                 if(!read_inital_data_on_startup)
                 {
                     current_page = CO2_SCREEN;
@@ -172,7 +173,6 @@ void display_task(void *parameter)
 
                 xSemaphoreGive(co2_mutex);
             }
-
         }
         
         // If this is true, both the temperature and humidity readings have reached 10, so average them both out
@@ -182,7 +182,7 @@ void display_task(void *parameter)
             {
                 sensor_data_buffer.average_temp = get_average_sensor_data(sensor_data_buffer.temperature, &sensor_data_buffer.temp_reading_index, "TEMP");
                 sensor_data_buffer.average_humidity = get_average_sensor_data(sensor_data_buffer.humidity, &sensor_data_buffer.humid_reading_index, "HUMID");
-                if(current_page == TEMPERATURE_HUMIDITY_SCREEN) // if current page displayed is the temp/humidity screen, update data on screen
+                if(current_page == TEMPERATURE_HUMIDITY_SCREEN && !is_display_off_in_consistent_sleep()) // if current page displayed is the temp/humidity screen, update data on screen
                 {
                     set_ui_screen_page(current_page);
                 }
@@ -195,7 +195,7 @@ void display_task(void *parameter)
             if(xSemaphoreTake(voc_mutex, pdMS_TO_TICKS(50)) == pdTRUE)
             {
                 sensor_data_buffer.average_voc = get_average_sensor_data(sensor_data_buffer.voc_measurement, &sensor_data_buffer.voc_reading_index, "VOC");
-                if(current_page == VOC_SCREEN) // if current page displayed is the VOC screen, update data on screen
+                if(current_page == VOC_SCREEN && !is_display_off_in_consistent_sleep()) // if current page displayed is the VOC screen, update data on screen
                 {
                     set_ui_screen_page(current_page);
                 }
@@ -205,8 +205,6 @@ void display_task(void *parameter)
         
         check_user_threshold();
         check_general_safety_value();
-
-        // figuring this out to get it working before entering deep sleep
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }

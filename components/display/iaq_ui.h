@@ -8,6 +8,9 @@ extern uint8_t clear_display_cmd[2];
 
 void display_task(void *parameter);
 
+/************************************
+ * These are all the possible screen pages that can be used
+ ***********************************/
 typedef enum {
     STARTUP_SCREEN = 0,
     TEMPERATURE_HUMIDITY_SCREEN,

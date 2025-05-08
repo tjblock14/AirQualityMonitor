@@ -25,10 +25,10 @@ bool safety_buzzer_status = false;
 // create an instance of this struct to be used 
 // RTC_DATA_ATTR will make sure this struct is not lost during deep sleep so it holds onto all readings
 RTC_DATA_ATTR sensor_readings_t sensor_data_buffer = {
-    .co2_generally_unsafe_value = 2000,
+    .co2_generally_unsafe_value = 3000,
     .co2_user_threshold         = 1500,
     .voc_user_threshold         = 300, 
-    .voc_generally_unsafe_value = 660
+    .voc_generally_unsafe_value = 600
 };
 
 

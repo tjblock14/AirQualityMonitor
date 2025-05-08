@@ -9,9 +9,10 @@
 #include "iaq_ui.h"
 
 /******************************
- * @brief This function is called after all of the data has been read from the queue, it then calculates and returns the average
+ * @brief This function is called after 10 data readings of a sensor has been completed and all of the data has been taken out of the queue
  * @param sensor_data_buf is the specific sensor data buffer array
  * @param sensor_buf_size is the amount of values in the array to average, should always be 10
+ * @returns the average value of the last 10 sensor readings
  *****************************/
 uint16_t calculate_average_sensor_value(uint16_t sensor_data_buf[10], size_t sensor_buf_size)
 {
@@ -26,12 +27,12 @@ uint16_t calculate_average_sensor_value(uint16_t sensor_data_buf[10], size_t sen
 
 }
 
-
 /***************************************
- * @brief this function will be called from the display task with parameters, depending on the sensor screen active
+ * @brief This function will be called from the display task with parameters, depending on the sensor screen active
  * @param sensor_data is a pointer to the specific sensor data array that contains the 10 values to average
  * @param sensor_index is a pointer to the specific sensor index
  * @param sensor_name is a string identifier of which sensor data is being read
+ * @returns the average value for the display, then clears out the memory of the 10 readings
  **************************************/
 uint16_t get_average_sensor_data(uint16_t *sensor_data, uint8_t *sensor_index, const char *sensor_name)
 {

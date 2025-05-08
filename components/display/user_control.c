@@ -140,16 +140,16 @@ void handle_button_press(int btn_id)
                     set_ui_screen_page(current_page);
                 }
                 break;
-            case USR_BTN_TWO_PIN:  // Go to setpoint screen
+            case USR_BTN_TWO_PIN:           // Go to setpoint screen
                 get_setpoint_screen();
                 break;
-            case USR_BTN_THREE_PIN:
+            case USR_BTN_THREE_PIN:         // If on setpoint screen, incrememnt user threshold
                 increment_gas_setpoint();
                 break;
-            case USR_BTN_FOUR_PIN:
+            case USR_BTN_FOUR_PIN:          // If on setpoint screen, decrement user threshold
                 decrement_gas_setpoint();
                 break;
-            case PWR_BTN_PIN:
+            case PWR_BTN_PIN:              // Acknowledge buzzer, put to sleep, or power off
                 handle_pwr_btn_press();
                 break;
             default:
