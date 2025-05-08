@@ -59,7 +59,6 @@ void repeated_increment_while_held(uint16_t *sensor_threshold)
         (*sensor_threshold)++;
         set_ui_screen_page(current_page);
         vTaskDelay(pdMS_TO_TICKS(50));
-        ESP_LOGW("BTN", "Incrementing held");
     }
 }
 
@@ -79,7 +78,6 @@ void increment_gas_setpoint()
         case SET_VOC_THRESH_SCREEN:
             sensor_data_buffer.voc_user_threshold++;
             set_ui_screen_page(current_page);
-            ESP_LOGI("Setpoint", "Incremented value");
             repeated_increment_while_held(&sensor_data_buffer.voc_user_threshold);
             break;
         default:
@@ -95,7 +93,6 @@ void repeated_decrement_while_held(uint16_t *sensor_threshold)
         (*sensor_threshold)--;
         set_ui_screen_page(current_page);
         vTaskDelay(pdMS_TO_TICKS(50));
-        ESP_LOGW("BTN", "Decrementing held");
     }
 }
 
